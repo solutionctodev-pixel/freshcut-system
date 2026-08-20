@@ -1,0 +1,199 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         UserRole
+  firstName    String
+  lastName     String
+  phone        String?
+  profileImage String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  customer     Customer?
+  employee     Employee?
+
+  @@index([role])
+}
+
+model Customer {
+  id            String         @id @default(cuid())
+  userId        String         @unique
+  dateOfBirth   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  creditWallet  CreditWallet?
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments      Payment[]
+  qrCodes       QRCode[]
+  subscriptions Subscription[]
+  visits        Visit[]
+}
+
+model Employee {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  branchId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  visits    Visit[]
+}
+
+model Branch {
+  id         String     @id @default(cuid())
+  name       String
+  address    String?
+  city       String?
+  postalCode String?
+  active     Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  employees  Employee[]
+  visits     Visit[]
+}
+
+model Package {
+  id               String         @id @default(cuid())
+  name             String
+  description      String?
+  price            Decimal        @db.Decimal(10, 2)
+  type             PackageType
+  billingInterval  BillingInterval @default(YEARLY)
+  active           Boolean        @default(true)
+  creditsPerPeriod Int?
+  visitsPerPeriod  Int?
+  durationDays     Int?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  payments         Payment[]
+  subscriptions    Subscription[]
+  visits           Visit[]
+}
+
+model Subscription {
+  id         String             @id @default(cuid())
+  customerId String
+  packageId  String
+  status     SubscriptionStatus @default(ACTIVE)
+  startedAt  DateTime
+  expiresAt  DateTime?
+  autoRenew  Boolean            @default(true)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  customer   Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  package    Package            @relation(fields: [packageId], references: [id])
+
+  @@index([customerId])
+  @@index([packageId])
+}
+
+model CreditWallet {
+  id         String   @id @default(cuid())
+  customerId String   @unique
+  balance    Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id                String          @id @default(cuid())
+  customerId        String
+  packageId         String
+  amount            Decimal         @db.Decimal(10, 2)
+  currency          String          @default("EUR")
+  provider          PaymentProvider
+  status            PaymentStatus   @default(PENDING)
+  providerPaymentId String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  customer          Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  package           Package         @relation(fields: [packageId], references: [id])
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model Visit {
+  id          String      @id @default(cuid())
+  customerId  String
+  branchId    String
+  employeeId  String?
+  packageId   String?
+  status      VisitStatus @default(COMPLETED)
+  checkInAt   DateTime    @default(now())
+  checkOutAt  DateTime?
+  usageAmount Int         @default(1)
+  createdAt   DateTime    @default(now())
+  branch      Branch      @relation(fields: [branchId], references: [id])
+  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  employee    Employee?   @relation(fields: [employeeId], references: [id])
+  package     Package?    @relation(fields: [packageId], references: [id])
+
+  @@index([customerId])
+  @@index([branchId])
+  @@index([checkInAt])
+}
+
+model QRCode {
+  id         String    @id @default(cuid())
+  customerId String
+  token      String    @unique
+  active     Boolean   @default(true)
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+enum UserRole {
+  CUSTOMER
+  EMPLOYEE
+  BRANCH_ADMIN
+  SUPER_ADMIN
+}
+
+enum PackageType {
+  SUBSCRIPTION
+  CREDIT
+  HYBRID
+}
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYPAL
+  KLARNA
+}
+
+enum VisitStatus {
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
