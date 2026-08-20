@@ -1,0 +1,7142 @@
+﻿============================================================
+DATEI: C:\freshcut-system\backend\prisma\migrations\20260817200807_init\migration.sql
+============================================================
+-- CreateEnum
+CREATE TYPE "UserRole" AS ENUM ('CUSTOMER', 'EMPLOYEE', 'BRANCH_ADMIN', 'SUPER_ADMIN');
+
+-- CreateEnum
+CREATE TYPE "PackageType" AS ENUM ('SUBSCRIPTION', 'CREDIT', 'HYBRID');
+
+-- CreateEnum
+CREATE TYPE "SubscriptionStatus" AS ENUM ('ACTIVE', 'PAUSED', 'CANCELLED', 'EXPIRED');
+
+-- CreateEnum
+CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PAID', 'FAILED', 'REFUNDED');
+
+-- CreateEnum
+CREATE TYPE "PaymentProvider" AS ENUM ('STRIPE', 'PAYPAL', 'KLARNA');
+
+-- CreateEnum
+CREATE TYPE "VisitStatus" AS ENUM ('COMPLETED', 'CANCELLED', 'REJECTED');
+
+-- CreateTable
+CREATE TABLE "User" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "passwordHash" TEXT NOT NULL,
+    "role" "UserRole" NOT NULL,
+    "firstName" TEXT NOT NULL,
+    "lastName" TEXT NOT NULL,
+    "phone" TEXT,
+    "profileImage" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Customer" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "dateOfBirth" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Customer_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Employee" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "branchId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Employee_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Branch" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "address" TEXT,
+    "city" TEXT,
+    "postalCode" TEXT,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Branch_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Package" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "price" DECIMAL(10,2) NOT NULL,
+    "type" "PackageType" NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "creditsPerPeriod" INTEGER,
+    "visitsPerPeriod" INTEGER,
+    "durationDays" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Package_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Subscription" (
+    "id" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "packageId" TEXT NOT NULL,
+    "status" "SubscriptionStatus" NOT NULL DEFAULT 'ACTIVE',
+    "startedAt" TIMESTAMP(3) NOT NULL,
+    "expiresAt" TIMESTAMP(3),
+    "autoRenew" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Subscription_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CreditWallet" (
+    "id" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "balance" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CreditWallet_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Payment" (
+    "id" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "packageId" TEXT NOT NULL,
+    "amount" DECIMAL(10,2) NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'EUR',
+    "provider" "PaymentProvider" NOT NULL,
+    "status" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
+    "providerPaymentId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Visit" (
+    "id" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "branchId" TEXT NOT NULL,
+    "employeeId" TEXT,
+    "packageId" TEXT,
+    "status" "VisitStatus" NOT NULL DEFAULT 'COMPLETED',
+    "checkInAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "checkOutAt" TIMESTAMP(3),
+    "usageAmount" INTEGER NOT NULL DEFAULT 1,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Visit_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "QRCode" (
+    "id" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "expiresAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "QRCode_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE INDEX "User_role_idx" ON "User"("role");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Customer_userId_key" ON "Customer"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Employee_userId_key" ON "Employee"("userId");
+
+-- CreateIndex
+CREATE INDEX "Subscription_customerId_idx" ON "Subscription"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Subscription_packageId_idx" ON "Subscription"("packageId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CreditWallet_customerId_key" ON "CreditWallet"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Payment_customerId_idx" ON "Payment"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Payment_status_idx" ON "Payment"("status");
+
+-- CreateIndex
+CREATE INDEX "Visit_customerId_idx" ON "Visit"("customerId");
+
+-- CreateIndex
+CREATE INDEX "Visit_branchId_idx" ON "Visit"("branchId");
+
+-- CreateIndex
+CREATE INDEX "Visit_checkInAt_idx" ON "Visit"("checkInAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "QRCode_token_key" ON "QRCode"("token");
+
+-- AddForeignKey
+ALTER TABLE "Customer" ADD CONSTRAINT "Customer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Employee" ADD CONSTRAINT "Employee_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Employee" ADD CONSTRAINT "Employee_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_packageId_fkey" FOREIGN KEY ("packageId") REFERENCES "Package"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CreditWallet" ADD CONSTRAINT "CreditWallet_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payment" ADD CONSTRAINT "Payment_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payment" ADD CONSTRAINT "Payment_packageId_fkey" FOREIGN KEY ("packageId") REFERENCES "Package"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Visit" ADD CONSTRAINT "Visit_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Visit" ADD CONSTRAINT "Visit_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "Branch"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Visit" ADD CONSTRAINT "Visit_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Visit" ADD CONSTRAINT "Visit_packageId_fkey" FOREIGN KEY ("packageId") REFERENCES "Package"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "QRCode" ADD CONSTRAINT "QRCode_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+
+============================================================
+DATEI: C:\freshcut-system\backend\prisma\migrations\20260818173722_add_billing_interval\migration.sql
+============================================================
+-- CreateEnum
+CREATE TYPE "BillingInterval" AS ENUM ('MONTHLY', 'YEARLY');
+
+-- AlterTable
+ALTER TABLE "Package" ADD COLUMN     "billingInterval" "BillingInterval" NOT NULL DEFAULT 'YEARLY';
+
+
+============================================================
+DATEI: C:\freshcut-system\backend\prisma\schema.prisma
+============================================================
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         UserRole
+  firstName    String
+  lastName     String
+  phone        String?
+  profileImage String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  customer     Customer?
+  employee     Employee?
+
+  @@index([role])
+}
+
+model Customer {
+  id            String         @id @default(cuid())
+  userId        String         @unique
+  dateOfBirth   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  creditWallet  CreditWallet?
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments      Payment[]
+  qrCodes       QRCode[]
+  subscriptions Subscription[]
+  visits        Visit[]
+}
+
+model Employee {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  branchId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  visits    Visit[]
+}
+
+model Branch {
+  id         String     @id @default(cuid())
+  name       String
+  address    String?
+  city       String?
+  postalCode String?
+  active     Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  employees  Employee[]
+  visits     Visit[]
+}
+
+model Package {
+  id               String         @id @default(cuid())
+  name             String
+  description      String?
+  price            Decimal        @db.Decimal(10, 2)
+  type             PackageType
+  billingInterval  BillingInterval @default(YEARLY)
+  active           Boolean        @default(true)
+  creditsPerPeriod Int?
+  visitsPerPeriod  Int?
+  durationDays     Int?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  payments         Payment[]
+  subscriptions    Subscription[]
+  visits           Visit[]
+}
+
+model Subscription {
+  id         String             @id @default(cuid())
+  customerId String
+  packageId  String
+  status     SubscriptionStatus @default(ACTIVE)
+  startedAt  DateTime
+  expiresAt  DateTime?
+  autoRenew  Boolean            @default(true)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  customer   Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  package    Package            @relation(fields: [packageId], references: [id])
+
+  @@index([customerId])
+  @@index([packageId])
+}
+
+model CreditWallet {
+  id         String   @id @default(cuid())
+  customerId String   @unique
+  balance    Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id                String          @id @default(cuid())
+  customerId        String
+  packageId         String
+  amount            Decimal         @db.Decimal(10, 2)
+  currency          String          @default("EUR")
+  provider          PaymentProvider
+  status            PaymentStatus   @default(PENDING)
+  providerPaymentId String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  customer          Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  package           Package         @relation(fields: [packageId], references: [id])
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model Visit {
+  id          String      @id @default(cuid())
+  customerId  String
+  branchId    String
+  employeeId  String?
+  packageId   String?
+  status      VisitStatus @default(COMPLETED)
+  checkInAt   DateTime    @default(now())
+  checkOutAt  DateTime?
+  usageAmount Int         @default(1)
+  createdAt   DateTime    @default(now())
+  branch      Branch      @relation(fields: [branchId], references: [id])
+  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  employee    Employee?   @relation(fields: [employeeId], references: [id])
+  package     Package?    @relation(fields: [packageId], references: [id])
+
+  @@index([customerId])
+  @@index([branchId])
+  @@index([checkInAt])
+}
+
+model QRCode {
+  id         String    @id @default(cuid())
+  customerId String
+  token      String    @unique
+  active     Boolean   @default(true)
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+enum UserRole {
+  CUSTOMER
+  EMPLOYEE
+  BRANCH_ADMIN
+  SUPER_ADMIN
+}
+
+enum PackageType {
+  SUBSCRIPTION
+  CREDIT
+  HYBRID
+}
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYPAL
+  KLARNA
+}
+
+enum VisitStatus {
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
+
+
+============================================================
+DATEI: C:\freshcut-system\backend\prisma\seed.ts
+============================================================
+import 'dotenv/config';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../generated/prisma/client';
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL is not defined');
+}
+
+const adapter = new PrismaPg({
+  connectionString,
+});
+
+const prisma = new PrismaClient({
+  adapter,
+});
+
+async function main() {
+  const user = await prisma.user.update({
+    where: {
+      email: 'test@freshcut.de',
+    },
+    data: {
+      role: 'SUPER_ADMIN',
+    },
+    select: {
+      id: true,
+      email: true,
+      role: true,
+    },
+  });
+
+  console.log('User aktualisiert:');
+  console.log(user);
+}
+
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\admin\admin.controller.ts
+============================================================
+import {
+  Controller,
+  Get,
+  UseGuards,
+} from '@nestjs/common';
+
+import { AdminService } from './admin.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+
+@Controller('admin')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('SUPER_ADMIN')
+export class AdminController {
+  constructor(
+    private readonly adminService: AdminService,
+  ) {}
+
+  @Get('dashboard')
+  getDashboard() {
+    return this.adminService.getDashboard();
+  }
+
+  @Get('visits')
+  getVisits() {
+    return this.adminService.getVisits();
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\admin\admin.module.ts
+============================================================
+import { Module } from '@nestjs/common';
+import { AdminController } from './admin.controller';
+import { AdminService } from './admin.service';
+
+@Module({
+  controllers: [AdminController],
+  providers: [AdminService],
+})
+export class AdminModule {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\admin\admin.service.ts
+============================================================
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class AdminService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getDashboard() {
+    const now = new Date();
+
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const [
+      customers,
+      employees,
+      branches,
+      visits,
+      activeSubscriptions,
+      expiredSubscriptions,
+      paidPayments,
+      recentPaidPayments,
+      branchPerformance,
+    ] = await Promise.all([
+      this.prisma.customer.count(),
+
+      this.prisma.employee.count(),
+
+      this.prisma.branch.count(),
+
+      this.prisma.visit.count(),
+
+      this.prisma.subscription.count({
+        where: {
+          status: 'ACTIVE',
+        },
+      }),
+
+      this.prisma.subscription.count({
+        where: {
+          status: 'EXPIRED',
+        },
+      }),
+
+      this.prisma.payment.findMany({
+        where: {
+          status: 'PAID',
+        },
+        select: {
+          amount: true,
+        },
+      }),
+
+      this.prisma.payment.findMany({
+        where: {
+          status: 'PAID',
+          createdAt: {
+            gte: sevenDaysAgo,
+          },
+        },
+        select: {
+          amount: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      }),
+
+      this.prisma.branch.findMany({
+        select: {
+          id: true,
+          name: true,
+          _count: {
+            select: {
+              visits: true,
+              employees: true,
+            },
+          },
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      }),
+    ]);
+
+    const revenue = paidPayments.reduce(
+      (total, payment) => total + Number(payment.amount),
+      0,
+    );
+
+    const revenueLast7Days = Array.from(
+      { length: 7 },
+      (_, index) => {
+        const date = new Date(sevenDaysAgo);
+
+        date.setDate(
+          sevenDaysAgo.getDate() + index,
+        );
+
+        const dayRevenue = recentPaidPayments
+          .filter((payment) => {
+            const paymentDate = new Date(
+              payment.createdAt,
+            );
+
+            return (
+              paymentDate.getFullYear() ===
+                date.getFullYear() &&
+              paymentDate.getMonth() ===
+                date.getMonth() &&
+              paymentDate.getDate() ===
+                date.getDate()
+            );
+          })
+          .reduce(
+            (total, payment) =>
+              total + Number(payment.amount),
+            0,
+          );
+
+        return {
+          name: date.toLocaleDateString(
+            'de-DE',
+            {
+              weekday: 'short',
+            },
+          ),
+          revenue: dayRevenue,
+        };
+      },
+    );
+
+    return {
+      customers,
+      employees,
+      branches,
+      visits,
+
+      subscriptions: {
+        active: activeSubscriptions,
+        expired: expiredSubscriptions,
+      },
+
+      payments: {
+        paid: paidPayments.length,
+      },
+
+      revenue,
+
+      revenueLast7Days,
+
+      branchPerformance: branchPerformance.map(
+        (branch) => ({
+          id: branch.id,
+          name: branch.name,
+          visits: branch._count.visits,
+          employees: branch._count.employees,
+        }),
+      ),
+    };
+  }
+  async getVisits() {
+    return this.prisma.visit.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+
+        employee: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+
+        customer: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+}
+
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\app.controller.spec.ts
+============================================================
+import { Test, TestingModule } from '@nestjs/testing';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+
+describe('AppController', () => {
+  let appController: AppController;
+
+  beforeEach(async () => {
+    const app: TestingModule = await Test.createTestingModule({
+      controllers: [AppController],
+      providers: [AppService],
+    }).compile();
+
+    appController = app.get<AppController>(AppController);
+  });
+
+  describe('root', () => {
+    it('should return "Hello World!"', () => {
+      expect(appController.getHello()).toBe('Hello World!');
+    });
+  });
+});
+
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\app.controller.ts
+============================================================
+import { Controller, Get } from '@nestjs/common';
+import { PrismaService } from './prisma/prisma.service';
+
+@Controller()
+export class AppController {
+  constructor(private readonly prisma: PrismaService) {}
+
+  @Get('db-test')
+  async dbTest() {
+    const result = await this.prisma.$queryRaw<
+      { result: number }[]
+    >`SELECT 1 as result`;
+
+    return {
+      database: 'connected',
+      result: result[0]?.result,
+    };
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\app.module.ts
+============================================================
+import { AdminModule } from './admin/admin.module';
+import { PaymentsModule } from './payments/payments.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+
+import { AppController } from './app.controller';
+
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+import { CustomersModule } from './customers/customers.module';
+import { BranchesModule } from './branches/branches.module';
+import { PackagesModule } from './packages/packages.module';
+import { EmployeesModule } from './employees/employees.module';
+import { VisitsModule } from './visits/visits.module';
+import { QrCodesModule } from './qrcodes/qrcodes.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+
+    PrismaModule,
+    AuthModule,
+    CustomersModule,
+    BranchesModule,
+    PackagesModule,
+    EmployeesModule,
+    VisitsModule,
+    QrCodesModule,
+SubscriptionsModule,
+PaymentsModule,
+AdminModule,
+
+  ],
+
+  controllers: [
+    AppController,
+  ],
+})
+export class AppModule {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\app.service.ts
+============================================================
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class AppService {
+  getHello(): string {
+    return 'Hello World!';
+  }
+}
+
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\auth\auth.controller.spec.ts
+============================================================
+import { Test, TestingModule } from '@nestjs/testing';
+import { AuthController } from './auth.controller';
+
+describe('AuthController', () => {
+  let controller: AuthController;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [AuthController],
+    }).compile();
+
+    controller = module.get<AuthController>(AuthController);
+  });
+
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
+  });
+});
+
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\auth\auth.controller.ts
+============================================================
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+
+import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
+
+import { Roles } from './decorators/roles.decorator';
+import { RolesGuard } from './roles.guard';
+
+@Controller('auth')
+export class AuthController {
+  constructor(
+    private readonly authService: AuthService,
+  ) {}
+
+  @Post('register')
+  async register(
+    @Body()
+    body: {
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+      phone?: string;
+    },
+  ) {
+    return this.authService.register(
+      body.email,
+      body.password,
+      body.firstName,
+      body.lastName,
+      body.phone,
+    );
+  }
+
+  @Post('login')
+  async login(
+    @Body()
+    body: {
+      email: string;
+      password: string;
+    },
+  ) {
+    return this.authService.login(
+      body.email,
+      body.password,
+    );
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  getMe(@Req() req: any) {
+    return req.user;
+  }
+
+  @Get('customer-test')
+  @UseGuards(
+    JwtAuthGuard,
+    RolesGuard,
+  )
+  @Roles('CUSTOMER')
+  customerTest(@Req() req: any) {
+    return {
+      message: 'CUSTOMER Zugriff erlaubt',
+      user: req.user,
+    };
+  }
+
+  /*
+   * TEMPORÃ„R FÃœR LOKALE ENTWICKLUNG
+   *
+   * Erstellt einen Mitarbeiter ohne SUPER_ADMIN Login.
+   *
+   * SpÃ¤ter wieder entfernen oder schÃ¼tzen!
+   */
+  @Post('create-employee-test')
+  async createEmployeeTest(
+    @Body()
+    body: {
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+      phone?: string;
+      branchId: string;
+    },
+  ) {
+    return this.authService.createEmployee(body);
+  }
+
+  @Post('employee-password-test')
+  async employeePasswordTest(
+    @Body()
+    body: {
+      email: string;
+      password: string;
+    },
+  ) {
+    return this.authService.resetEmployeePassword(
+      body.email,
+      body.password,
+    );
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\auth\auth.module.ts
+============================================================
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { JwtStrategy } from './jwt.strategy';
+import { PrismaModule } from '../prisma/prisma.module';
+import { RolesGuard } from './roles.guard';
+
+@Module({
+  imports: [
+    PrismaModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'development-secret-change-me',
+      signOptions: {
+        expiresIn: '7d',
+      },
+    }),
+  ],
+  controllers: [AuthController],
+providers: [AuthService, JwtStrategy, RolesGuard],  exports: [AuthService],
+})
+export class AuthModule {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\auth\auth.service.spec.ts
+============================================================
+import { Test, TestingModule } from '@nestjs/testing';
+import { AuthService } from './auth.service';
+
+describe('AuthService', () => {
+  let service: AuthService;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [AuthService],
+    }).compile();
+
+    service = module.get<AuthService>(AuthService);
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+});
+
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\auth\auth.service.ts
+============================================================
+import {
+  Injectable,
+  UnauthorizedException,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
+
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
+
+  async register(
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    phone?: string,
+  ) {
+    const existingUser =
+      await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+    if (existingUser) {
+      throw new ConflictException(
+        'E-Mail bereits registriert',
+      );
+    }
+
+    const passwordHash =
+      await bcrypt.hash(password, 12);
+
+    return this.prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        firstName,
+        lastName,
+        phone,
+        role: 'CUSTOMER',
+
+        customer: {
+          create: {},
+        },
+      },
+
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        role: true,
+      },
+    });
+  }
+
+  async login(
+    email: string,
+    password: string,
+  ) {
+    const user =
+      await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'E-Mail oder Passwort falsch',
+      );
+    }
+
+    const passwordValid =
+      await bcrypt.compare(
+        password,
+        user.passwordHash,
+      );
+
+    if (!passwordValid) {
+      throw new UnauthorizedException(
+        'E-Mail oder Passwort falsch',
+      );
+    }
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    return {
+      access_token:
+        await this.jwtService.signAsync(payload),
+
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      },
+    };
+  }
+
+  async createEmployee(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    branchId: string;
+  }) {
+    const branch =
+      await this.prisma.branch.findUnique({
+        where: {
+          id: data.branchId,
+        },
+      });
+
+    if (!branch) {
+      throw new NotFoundException(
+        'Filiale nicht gefunden',
+      );
+    }
+
+    const existingUser =
+      await this.prisma.user.findUnique({
+        where: {
+          email: data.email,
+        },
+      });
+
+    if (existingUser) {
+      throw new ConflictException(
+        'E-Mail bereits registriert',
+      );
+    }
+
+    const passwordHash =
+      await bcrypt.hash(
+        data.password,
+        12,
+      );
+
+    return this.prisma.user.create({
+      data: {
+        email: data.email,
+        passwordHash,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        role: 'EMPLOYEE',
+
+        employee: {
+          create: {
+            branchId: data.branchId,
+          },
+        },
+      },
+
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        role: true,
+
+        employee: {
+          select: {
+            id: true,
+            branchId: true,
+          },
+        },
+      },
+    });
+  }
+
+  async resetEmployeePassword(
+    email: string,
+    newPassword: string,
+  ) {
+    const user =
+      await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'Mitarbeiter nicht gefunden',
+      );
+    }
+
+    const passwordHash =
+      await bcrypt.hash(
+        newPassword,
+        12,
+      );
+
+    return this.prisma.user.update({
+      where: {
+        id: user.id,
+      },
+
+      data: {
+        passwordHash,
+        role: 'EMPLOYEE',
+      },
+
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+      },
+    });
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\auth\decorators\roles.decorator.ts
+============================================================
+import { SetMetadata } from '@nestjs/common';
+
+export const ROLES_KEY = 'roles';
+
+export const Roles = (...roles: string[]) =>
+  SetMetadata(ROLES_KEY, roles);
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\auth\jwt.strategy.ts
+============================================================
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor(private readonly configService: ConfigService) {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ignoreExpiration: false,
+      secretOrKey:
+        configService.get<string>('JWT_SECRET') ||
+        'development-secret-change-me',
+    });
+  }
+
+  async validate(payload: {
+    sub: string;
+    email: string;
+    role: string;
+  }) {
+    return {
+      id: payload.sub,
+      email: payload.email,
+      role: payload.role,
+    };
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\auth\jwt-auth.guard.ts
+============================================================
+import { Injectable } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+
+@Injectable()
+export class JwtAuthGuard extends AuthGuard('jwt') {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\auth\roles.guard.ts
+============================================================
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+
+@Injectable()
+export class RolesGuard implements CanActivate {
+  constructor(private readonly reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>(
+      'roles',
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (!requiredRoles || requiredRoles.length === 0) {
+      return true;
+    }
+
+    const request = context.switchToHttp().getRequest();
+    const user = request.user;
+
+    if (!user) {
+      throw new ForbiddenException('Benutzer nicht authentifiziert');
+    }
+
+   const hasRole =
+  requiredRoles.includes(user.role) ||
+  (user.role === 'SUPER_ADMIN' &&
+    requiredRoles.includes('ADMIN'));
+
+if (!hasRole) {
+  throw new ForbiddenException(
+    'Keine Berechtigung',
+  );
+}
+
+    return true;
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\branches\branches.controller.ts
+============================================================
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+
+import { BranchesService } from './branches.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+
+@Controller('branches')
+export class BranchesController {
+  constructor(
+    private readonly branchesService: BranchesService,
+  ) {}
+
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  async getAllBranches() {
+    return this.branchesService.getAllBranches();
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  async getBranchById(
+    @Param('id') id: string,
+  ) {
+    return this.branchesService.getBranchById(id);
+  }
+
+  @Get(':id/employees')
+  @UseGuards(JwtAuthGuard)
+  async getBranchEmployees(
+    @Param('id') id: string,
+  ) {
+    return this.branchesService.getBranchEmployees(id);
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('SUPER_ADMIN')  async createBranch(
+    @Body()
+    body: {
+      name: string;
+      address?: string;
+      city?: string;
+      postalCode?: string;
+    },
+  ) {
+    return this.branchesService.createBranch(body);
+  }
+  @Post('employees')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('SUPER_ADMIN')
+async createEmployee(
+  @Body()
+  body: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    branchId: string;
+  },
+) {
+  return this.branchesService.createEmployee(body);
+}
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\branches\branches.module.ts
+============================================================
+import { Module } from '@nestjs/common';
+
+import { BranchesController } from './branches.controller';
+import { BranchesService } from './branches.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [BranchesController],
+  providers: [BranchesService],
+})
+export class BranchesModule {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\branches\branches.service.ts
+============================================================
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class BranchesService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getAllBranches() {
+    return this.prisma.branch.findMany({
+      where: {
+        active: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        city: true,
+        postalCode: true,
+        active: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+  }
+
+  async getBranchById(branchId: string) {
+    const branch = await this.prisma.branch.findUnique({
+      where: {
+        id: branchId,
+      },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        city: true,
+        postalCode: true,
+        active: true,
+      },
+    });
+
+    if (!branch) {
+      throw new NotFoundException('Filiale nicht gefunden');
+    }
+
+    return branch;
+  }
+
+  async getBranchEmployees(branchId: string) {
+    const branch = await this.prisma.branch.findUnique({
+      where: {
+        id: branchId,
+      },
+    });
+
+    if (!branch) {
+      throw new NotFoundException('Filiale nicht gefunden');
+    }
+
+    return this.prisma.employee.findMany({
+      where: {
+        branchId,
+      },
+      select: {
+        id: true,
+        branchId: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            profileImage: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        user: {
+          lastName: 'asc',
+        },
+      },
+    });
+  }
+
+  async createBranch(data: {
+    name: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+  }) {
+    return this.prisma.branch.create({
+      data: {
+        name: data.name,
+        address: data.address,
+        city: data.city,
+        postalCode: data.postalCode,
+      },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        city: true,
+        postalCode: true,
+        active: true,
+      },
+    });
+  }
+  async createEmployee(data: {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  branchId: string;
+}) {
+  const branch = await this.prisma.branch.findUnique({
+    where: {
+      id: data.branchId,
+    },
+  });
+
+  if (!branch) {
+    throw new NotFoundException('Filiale nicht gefunden');
+  }
+
+  const existingUser = await this.prisma.user.findUnique({
+    where: {
+      email: data.email,
+    },
+  });
+
+  if (existingUser) {
+    throw new Error('E-Mail bereits registriert');
+  }
+
+  const bcrypt = await import('bcrypt');
+
+  const passwordHash = await bcrypt.hash(
+    data.password,
+    12,
+  );
+
+  return this.prisma.user.create({
+    data: {
+      email: data.email,
+      passwordHash,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phone: data.phone,
+      role: 'EMPLOYEE',
+
+      employee: {
+        create: {
+          branchId: data.branchId,
+        },
+      },
+    },
+
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      role: true,
+
+      employee: {
+        select: {
+          id: true,
+          branchId: true,
+        },
+      },
+    },
+  });
+}
+}
+
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\customers\customers.controller.ts
+============================================================
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+
+import { CustomersService } from './customers.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+
+@Controller('customers')
+export class CustomersController {
+  @Get('me/dashboard')
+@UseGuards(JwtAuthGuard)
+async getDashboard(@Req() req: any) {
+  return this.customersService.getDashboard(
+    req.user.id,
+  );
+}
+  constructor(
+    private readonly customersService: CustomersService,
+  ) {}
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('CUSTOMER')
+  async getMyProfile(@Req() req: any) {
+    return this.customersService.getMyProfile(req.user.id);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('CUSTOMER')
+  async updateMyProfile(
+    @Req() req: any,
+    @Body()
+    body: {
+      firstName?: string;
+      lastName?: string;
+      phone?: string;
+      dateOfBirth?: string;
+      profileImage?: string;
+    },
+  ) {
+    return this.customersService.updateMyProfile(
+      req.user.id,
+      body,
+    );
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\customers\customers.module.ts
+============================================================
+import { Module } from '@nestjs/common';
+
+import { CustomersController } from './customers.controller';
+import { CustomersService } from './customers.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [CustomersController],
+  providers: [CustomersService],
+})
+export class CustomersModule {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\customers\customers.service.ts
+============================================================
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class CustomersService {
+  constructor(private readonly prisma: PrismaService) {}
+async getDashboard(userId: string) {
+  const customer =
+    await this.prisma.customer.findUnique({
+      where: {
+        userId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            profileImage: true,
+          },
+        },
+
+        subscriptions: {
+          where: {
+            status: 'ACTIVE',
+          },
+          include: {
+            package: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+
+        qrCodes: {
+          where: {
+            active: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
+        },
+
+        visits: {
+          include: {
+            branch: true,
+            employee: {
+              include: {
+                user: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 10,
+        },
+      },
+    });
+
+  if (!customer) {
+    throw new NotFoundException(
+      'Kunde nicht gefunden',
+    );
+  }
+
+  return {
+    customer: customer.user,
+
+    membership:
+      customer.subscriptions[0] ?? null,
+
+    qrCode:
+      customer.qrCodes[0] ?? null,
+
+    visits: customer.visits,
+  };
+}
+  async getMyProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        profileImage: true,
+        role: true,
+        customer: {
+          select: {
+            id: true,
+            dateOfBirth: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Kunde nicht gefunden');
+    }
+
+    return user;
+  }
+
+  async updateMyProfile(
+    userId: string,
+    data: {
+      firstName?: string;
+      lastName?: string;
+      phone?: string;
+      dateOfBirth?: string;
+      profileImage?: string;
+    },
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      include: {
+        customer: true,
+      },
+    });
+
+    if (!user || !user.customer) {
+      throw new NotFoundException('Kunde nicht gefunden');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        profileImage: data.profileImage,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        profileImage: true,
+        role: true,
+      },
+    });
+
+    await this.prisma.customer.update({
+      where: {
+        id: user.customer.id,
+      },
+      data: {
+        dateOfBirth: data.dateOfBirth
+          ? new Date(data.dateOfBirth)
+          : undefined,
+      },
+    });
+
+    return this.getMyProfile(userId);
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\employees\employees.controller.ts
+============================================================
+import {
+  Controller,
+  Get,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+
+import { EmployeesService } from './employees.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+
+@Controller('employees')
+export class EmployeesController {
+  constructor(
+    private readonly employeesService: EmployeesService,
+  ) {}
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getMe(@Req() req: any) {
+    return this.employeesService.getMyEmployee(
+      req.user.id,
+    );
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\employees\employees.module.ts
+============================================================
+import { Module } from '@nestjs/common';
+
+import { EmployeesController } from './employees.controller';
+import { EmployeesService } from './employees.service';
+
+@Module({
+  controllers: [
+    EmployeesController,
+  ],
+  providers: [
+    EmployeesService,
+  ],
+  exports: [
+    EmployeesService,
+  ],
+})
+export class EmployeesModule {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\employees\employees.service.ts
+============================================================
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class EmployeesService {
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
+
+  async getMyEmployee(userId: string) {
+    const employee =
+      await this.prisma.employee.findFirst({
+        where: {
+          userId,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              role: true,
+            },
+          },
+          branch: true,
+        },
+      });
+
+    if (!employee) {
+      throw new NotFoundException(
+        'Mitarbeiter nicht gefunden',
+      );
+    }
+
+    return employee;
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\main.ts
+============================================================
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import * as bodyParser from 'body-parser';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false,
+  });
+
+  app.use('/payments/webhook', bodyParser.raw({
+    type: 'application/json',
+  }));
+
+  app.use(bodyParser.json());
+
+  app.enableCors({
+    origin: [
+      'http://localhost:3001',
+      'http://127.0.0.1:3001',
+      'http://10.25.247.145:3001',
+    ],
+    credentials: true,
+  });
+
+  await app.listen(3000, '0.0.0.0');
+}
+
+bootstrap();
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\packages\packages.controller.ts
+============================================================
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
+
+import { PackagesService } from './packages.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+
+@Controller('packages')
+export class PackagesController {
+  constructor(
+    private readonly packagesService: PackagesService,
+  ) {}
+
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  async getAllPackages() {
+    return this.packagesService.getAllPackages();
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  async getPackageById(
+    @Param('id') id: string,
+  ) {
+    return this.packagesService.getPackageById(id);
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN')
+  async createPackage(
+    @Body()
+    body: {
+      name: string;
+      description?: string;
+      price: string;
+      type: 'SUBSCRIPTION' | 'CREDIT' | 'HYBRID';
+      creditsPerPeriod?: number;
+      visitsPerPeriod?: number;
+      durationDays?: number;
+    },
+  ) {
+    return this.packagesService.createPackage(body);
+  }
+
+  @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN')
+  async updatePackage(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      description?: string;
+      price?: string;
+      type?: 'SUBSCRIPTION' | 'CREDIT' | 'HYBRID';
+      creditsPerPeriod?: number;
+      visitsPerPeriod?: number;
+      durationDays?: number;
+      active?: boolean;
+    },
+  ) {
+    return this.packagesService.updatePackage(
+      id,
+      body,
+    );
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN')
+  async deactivatePackage(
+    @Param('id') id: string,
+  ) {
+    return this.packagesService.deactivatePackage(id);
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\packages\packages.module.ts
+============================================================
+import { Module } from '@nestjs/common';
+
+import { PackagesController } from './packages.controller';
+import { PackagesService } from './packages.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [PackagesController],
+  providers: [PackagesService],
+  exports: [PackagesService],
+})
+export class PackagesModule {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\packages\packages.service.ts
+============================================================
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class PackagesService {
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
+
+  async getAllPackages() {
+    return this.prisma.package.findMany({
+      where: {
+        active: true,
+      },
+      orderBy: {
+        price: 'asc',
+      },
+    });
+  }
+
+  async getPackageById(id: string) {
+    const packageItem =
+      await this.prisma.package.findUnique({
+        where: {
+          id,
+        },
+      });
+
+    if (!packageItem) {
+      throw new NotFoundException(
+        'Paket nicht gefunden',
+      );
+    }
+
+    return packageItem;
+  }
+
+  async createPackage(data: {
+    name: string;
+    description?: string;
+    price: string;
+    type: any;
+    creditsPerPeriod?: number;
+    visitsPerPeriod?: number;
+    durationDays?: number;
+  }) {
+    return this.prisma.package.create({
+      data: {
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        type: data.type,
+        creditsPerPeriod:
+          data.creditsPerPeriod,
+        visitsPerPeriod:
+          data.visitsPerPeriod,
+        durationDays:
+          data.durationDays,
+        active: true,
+      },
+    });
+  }
+
+  async updatePackage(
+    id: string,
+    data: {
+      name?: string;
+      description?: string;
+      price?: string;
+      type?: any;
+      creditsPerPeriod?: number;
+      visitsPerPeriod?: number;
+      durationDays?: number;
+      active?: boolean;
+    },
+  ) {
+    const existingPackage =
+      await this.prisma.package.findUnique({
+        where: {
+          id,
+        },
+      });
+
+    if (!existingPackage) {
+      throw new NotFoundException(
+        'Paket nicht gefunden',
+      );
+    }
+
+    return this.prisma.package.update({
+      where: {
+        id,
+      },
+      data,
+    });
+  }
+
+  async deactivatePackage(id: string) {
+    const existingPackage =
+      await this.prisma.package.findUnique({
+        where: {
+          id,
+        },
+      });
+
+    if (!existingPackage) {
+      throw new NotFoundException(
+        'Paket nicht gefunden',
+      );
+    }
+
+    return this.prisma.package.update({
+      where: {
+        id,
+      },
+      data: {
+        active: false,
+      },
+    });
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\payments\payments.controller.ts
+============================================================
+import {
+  Controller,
+  Post,
+  Body,
+  Headers,
+  Req,
+} from '@nestjs/common';
+import { PaymentsService } from './payments.service';
+
+@Controller('payments')
+export class PaymentsController {
+  constructor(
+    private readonly paymentsService: PaymentsService,
+  ) {}
+
+  @Post('checkout')
+  async createCheckout(
+    @Body()
+    body: {
+      packageId: string;
+      packageName: string;
+      price: number;
+      billingInterval: string;
+    },
+  ) {
+    return this.paymentsService.createCheckoutSession(
+      body,
+    );
+  }
+
+  @Post('webhook')
+  async webhook(
+    @Req() req: any,
+    @Headers('stripe-signature')
+    signature: string,
+  ) {
+    return this.paymentsService.handleWebhook(
+      req.body,
+      signature,
+    );
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\payments\payments.module.ts
+============================================================
+
+import { Module } from '@nestjs/common';
+import { PaymentsController } from './payments.controller';
+import { PaymentsService } from './payments.service';
+
+@Module({
+  controllers: [PaymentsController],
+  providers: [PaymentsService],
+  exports: [PaymentsService],
+})
+export class PaymentsModule {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\payments\payments.service.ts
+============================================================
+import { Injectable } from '@nestjs/common';
+import Stripe from 'stripe';
+
+@Injectable()
+export class PaymentsService {
+  private readonly stripe: Stripe;
+
+  constructor() {
+    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  }
+
+  async createCheckoutSession(data: {
+    packageId: string;
+    packageName: string;
+    price: number;
+    billingInterval: string;
+  }) {
+    const session = await this.stripe.checkout.sessions.create({
+      mode: 'subscription',
+
+      line_items: [
+        {
+          price_data: {
+            currency: 'eur',
+            product_data: {
+              name: data.packageName,
+            },
+            unit_amount: Math.round(data.price * 100),
+            recurring: {
+              interval:
+                data.billingInterval === 'YEARLY'
+                  ? 'year'
+                  : 'month',
+            },
+          },
+          quantity: 1,
+        },
+      ],
+
+      success_url:
+        'http://localhost:3001/checkout/success',
+
+      cancel_url:
+        'http://localhost:3001/checkout',
+
+      metadata: {
+        packageId: data.packageId,
+      },
+    });
+
+    return {
+      url: session.url,
+      sessionId: session.id,
+    };
+  }
+
+  async handleWebhook(
+    payload: Buffer,
+    signature: string,
+  ) {
+    const event = this.stripe.webhooks.constructEvent(
+      payload,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET!,
+    );
+
+    console.log(
+      'STRIPE WEBHOOK:',
+      event.type,
+    );
+
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+
+        console.log(
+          'CHECKOUT ERFOLGREICH:',
+          session.id,
+        );
+
+        console.log(
+          'PACKAGE ID:',
+          session.metadata?.packageId,
+        );
+
+        console.log(
+          'CUSTOMER:',
+          session.customer,
+        );
+
+        break;
+      }
+
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice;
+
+        console.log(
+          'RECHNUNG BEZAHLT:',
+          invoice.id,
+        );
+
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription =
+          event.data.object as Stripe.Subscription;
+
+        console.log(
+          'ABONNEMENT BEENDET:',
+          subscription.id,
+        );
+
+        break;
+      }
+
+      default:
+        console.log(
+          'STRIPE EVENT:',
+          event.type,
+        );
+    }
+
+    return {
+      received: true,
+    };
+  }
+}
+
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\prisma\prisma.module.ts
+============================================================
+import { Global, Module } from '@nestjs/common';
+import { PrismaService } from './prisma.service';
+
+@Global()
+@Module({
+  providers: [PrismaService],
+  exports: [PrismaService],
+})
+export class PrismaModule {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\prisma\prisma.service.ts
+============================================================
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../../generated/prisma/client';
+
+@Injectable()
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  constructor() {
+    const connectionString = process.env.DATABASE_URL;
+
+    if (!connectionString) {
+      throw new Error('DATABASE_URL is not defined');
+    }
+
+    const adapter = new PrismaPg({
+      connectionString,
+    });
+
+    super({ adapter });
+  }
+
+  async onModuleInit() {
+    await this.$connect();
+  }
+
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\qrcodes\qrcodes.controller.ts
+============================================================
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+
+import { QrCodesService } from './qrcodes.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+
+@Controller('qrcodes')
+export class QrCodesController {
+  constructor(
+    private readonly qrCodesService: QrCodesService,
+  ) {}
+
+  @Post('me')
+  @UseGuards(JwtAuthGuard)
+  async createMyQrCode(@Req() req: any) {
+    return this.qrCodesService.createMyQrCode(
+      req.user.id,
+    );
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getMyQrCode(@Req() req: any) {
+    return this.qrCodesService.getMyQrCode(
+      req.user.id,
+    );
+  }
+
+  @Post('scan')
+  @UseGuards(JwtAuthGuard)
+  async scanQrCode(
+    @Body()
+    body: {
+      token: string;
+      branchId: string;
+      employeeId: string;
+    },
+  ) {
+    return this.qrCodesService.scanQrCode(
+      body.token,
+      body.branchId,
+      body.employeeId,
+    );
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\qrcodes\qrcodes.module.ts
+============================================================
+import { Module } from '@nestjs/common';
+
+import { QrCodesController } from './qrcodes.controller';
+import { QrCodesService } from './qrcodes.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [QrCodesController],
+  providers: [QrCodesService],
+})
+export class QrCodesModule {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\qrcodes\qrcodes.service.ts
+============================================================
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+
+import { randomBytes } from 'crypto';
+
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class QrCodesService {
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
+
+  async createMyQrCode(userId: string) {
+    const customer =
+      await this.prisma.customer.findUnique({
+        where: {
+          userId,
+        },
+      });
+
+    if (!customer) {
+      throw new NotFoundException(
+        'Kunde nicht gefunden',
+      );
+    }
+
+    await this.prisma.qRCode.updateMany({
+      where: {
+        customerId: customer.id,
+        active: true,
+      },
+      data: {
+        active: false,
+      },
+    });
+
+    const token =
+      randomBytes(32).toString('hex');
+
+    return this.prisma.qRCode.create({
+      data: {
+        customerId: customer.id,
+        token,
+        active: true,
+      },
+    });
+  }
+
+  async getMyQrCode(userId: string) {
+    const customer =
+      await this.prisma.customer.findUnique({
+        where: {
+          userId,
+        },
+      });
+
+    if (!customer) {
+      throw new NotFoundException(
+        'Kunde nicht gefunden',
+      );
+    }
+
+    const existingQr =
+      await this.prisma.qRCode.findFirst({
+        where: {
+          customerId: customer.id,
+          active: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+    if (existingQr) {
+      return existingQr;
+    }
+
+    // Kein QR-Code vorhanden â†’ automatisch erstellen
+    const token =
+      randomBytes(32).toString('hex');
+
+    return this.prisma.qRCode.create({
+      data: {
+        customerId: customer.id,
+        token,
+        active: true,
+      },
+    });
+  }
+
+  async scanQrCode(
+    token: string,
+    branchId: string,
+    employeeId: string,
+  ) {
+    const qrCode =
+      await this.prisma.qRCode.findUnique({
+        where: {
+          token,
+        },
+        include: {
+          customer: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+
+    if (!qrCode || !qrCode.active) {
+      throw new BadRequestException(
+        'QR-Code ist ungÃ¼ltig',
+      );
+    }
+
+    if (
+      qrCode.expiresAt &&
+      qrCode.expiresAt < new Date()
+    ) {
+      throw new BadRequestException(
+        'QR-Code ist abgelaufen',
+      );
+    }
+
+    const branch =
+      await this.prisma.branch.findUnique({
+        where: {
+          id: branchId,
+        },
+      });
+
+    if (!branch || !branch.active) {
+      throw new NotFoundException(
+        'Filiale nicht gefunden oder nicht aktiv',
+      );
+    }
+
+    const employee =
+      await this.prisma.employee.findUnique({
+        where: {
+          id: employeeId,
+        },
+      });
+
+    if (!employee) {
+      throw new NotFoundException(
+        'Mitarbeiter nicht gefunden',
+      );
+    }
+
+    if (employee.branchId !== branchId) {
+      throw new BadRequestException(
+        'Mitarbeiter gehÃ¶rt nicht zu dieser Filiale',
+      );
+    }
+
+    const subscription =
+      await this.prisma.subscription.findFirst({
+        where: {
+          customerId: qrCode.customerId,
+          status: 'ACTIVE',
+          OR: [
+            {
+              expiresAt: null,
+            },
+            {
+              expiresAt: {
+                gte: new Date(),
+              },
+            },
+          ],
+        },
+        include: {
+          package: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+    if (!subscription) {
+      throw new BadRequestException(
+        'Keine aktive Membership vorhanden',
+      );
+    }
+
+    const visit =
+      await this.prisma.visit.create({
+        data: {
+          customerId: qrCode.customerId,
+          branchId,
+          employeeId,
+        },
+        include: {
+          branch: true,
+          employee: {
+            include: {
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+          },
+          customer: {
+            include: {
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+    return {
+      success: true,
+      message: 'Check-in erfolgreich',
+      visit,
+      subscription,
+    };
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\subscriptions\subscriptions.controller.ts
+============================================================
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+
+import { SubscriptionsService } from './subscriptions.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+
+@Controller('subscriptions')
+export class SubscriptionsController {
+  constructor(
+    private readonly subscriptionsService: SubscriptionsService,
+  ) {}
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  async createSubscription(
+    @Req() req: any,
+    @Body()
+    body: {
+      packageId: string;
+    },
+  ) {
+    return this.subscriptionsService.createSubscription(
+      req.user.id,
+      body.packageId,
+    );
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getMySubscriptions(
+    @Req() req: any,
+  ) {
+    return this.subscriptionsService.getMySubscriptions(
+      req.user.id,
+    );
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\subscriptions\subscriptions.module.ts
+============================================================
+import { Module } from '@nestjs/common';
+
+import { SubscriptionsController } from './subscriptions.controller';
+import { SubscriptionsService } from './subscriptions.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [SubscriptionsController],
+  providers: [SubscriptionsService],
+})
+export class SubscriptionsModule {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\subscriptions\subscriptions.service.ts
+============================================================
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class SubscriptionsService {
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
+
+  async createSubscription(
+    userId: string,
+    packageId: string,
+  ) {
+    const customer =
+      await this.prisma.customer.findUnique({
+        where: {
+          userId,
+        },
+      });
+
+    if (!customer) {
+      throw new NotFoundException(
+        'Kunde nicht gefunden',
+      );
+    }
+
+    const packageItem =
+      await this.prisma.package.findUnique({
+        where: {
+          id: packageId,
+        },
+      });
+
+    if (!packageItem) {
+      throw new NotFoundException(
+        'Paket nicht gefunden',
+      );
+    }
+
+    const startedAt = new Date();
+
+const expiresAt = new Date(startedAt);
+
+if (packageItem.billingInterval === 'MONTHLY') {
+  expiresAt.setMonth(expiresAt.getMonth() + 1);
+} else {
+  expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+}
+
+    return this.prisma.subscription.create({
+      data: {
+        customerId: customer.id,
+        packageId,
+        status: 'ACTIVE',
+        startedAt,
+        expiresAt,
+        autoRenew: true,
+      },
+
+      include: {
+        package: true,
+
+        customer: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async getMySubscriptions(
+    userId: string,
+  ) {
+    const customer =
+      await this.prisma.customer.findUnique({
+        where: {
+          userId,
+        },
+      });
+
+    if (!customer) {
+      throw new NotFoundException(
+        'Kunde nicht gefunden',
+      );
+    }
+
+    return this.prisma.subscription.findMany({
+      where: {
+        customerId: customer.id,
+      },
+
+      include: {
+        package: true,
+      },
+
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\visits\visits.controller.ts
+============================================================
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+
+import { VisitsService } from './visits.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+
+@Controller('visits')
+export class VisitsController {
+  constructor(
+    private readonly visitsService: VisitsService,
+  ) {}
+
+  @Post('scan')
+  @UseGuards(JwtAuthGuard)
+  async scanQrCode(
+    @Req() req: any,
+    @Body()
+    body: {
+      token: string;
+    },
+  ) {
+    return this.visitsService.scanQrCode(
+      req.user.id,
+      body.token,
+    );
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  async createVisit(
+    @Req() req: any,
+    @Body()
+    body: {
+      branchId: string;
+      employeeId?: string;
+    },
+  ) {
+    return this.visitsService.createVisit(
+      req.user.id,
+      body.branchId,
+      body.employeeId,
+    );
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getMyVisits(
+    @Req() req: any,
+  ) {
+    return this.visitsService.getMyVisits(
+      req.user.id,
+    );
+  }
+}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\visits\visits.module.ts
+============================================================
+import { Module } from '@nestjs/common';
+
+import { VisitsController } from './visits.controller';
+import { VisitsService } from './visits.service';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [VisitsController],
+  providers: [VisitsService],
+})
+export class VisitsModule {}
+
+============================================================
+DATEI: C:\freshcut-system\backend\src\visits\visits.service.ts
+============================================================
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class VisitsService {
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
+
+  async createVisit(
+    userId: string,
+    branchId: string,
+    employeeId?: string,
+  ) {
+    const customer =
+      await this.prisma.customer.findUnique({
+        where: {
+          userId,
+        },
+      });
+
+    if (!customer) {
+      throw new NotFoundException(
+        'Kunde nicht gefunden',
+      );
+    }
+
+    return this.createVisitForCustomer(
+      customer.id,
+      branchId,
+      employeeId,
+    );
+  }
+
+  async createVisitForCustomer(
+    customerId: string,
+    branchId: string,
+    employeeId?: string,
+  ) {
+    const customer =
+      await this.prisma.customer.findUnique({
+        where: {
+          id: customerId,
+        },
+      });
+
+    if (!customer) {
+      throw new NotFoundException(
+        'Kunde nicht gefunden',
+      );
+    }
+
+    const branch =
+      await this.prisma.branch.findUnique({
+        where: {
+          id: branchId,
+        },
+      });
+
+    if (!branch) {
+      throw new NotFoundException(
+        'Filiale nicht gefunden',
+      );
+    }
+
+    if (!branch.active) {
+      throw new NotFoundException(
+        'Filiale ist nicht aktiv',
+      );
+    }
+
+    if (employeeId) {
+      const employee =
+        await this.prisma.employee.findUnique({
+          where: {
+            id: employeeId,
+          },
+        });
+
+      if (!employee) {
+        throw new NotFoundException(
+          'Mitarbeiter nicht gefunden',
+        );
+      }
+
+      if (employee.branchId !== branchId) {
+        throw new NotFoundException(
+          'Mitarbeiter gehÃ¶rt nicht zu dieser Filiale',
+        );
+      }
+    }
+
+    const subscription =
+      await this.prisma.subscription.findFirst({
+        where: {
+          customerId: customer.id,
+          status: 'ACTIVE',
+          OR: [
+            {
+              expiresAt: null,
+            },
+            {
+              expiresAt: {
+                gte: new Date(),
+              },
+            },
+          ],
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+    if (!subscription) {
+      throw new NotFoundException(
+        'Keine aktive Membership vorhanden',
+      );
+    }
+
+    return this.prisma.visit.create({
+      data: {
+        customerId: customer.id,
+        branchId,
+        employeeId: employeeId ?? null,
+      },
+
+      include: {
+        branch: true,
+
+        employee: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+
+        customer: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async checkInByQrToken(
+    qrToken: string,
+    branchId: string,
+    employeeId?: string,
+  ) {
+    const qrCode =
+      await this.prisma.qRCode.findUnique({
+        where: {
+          token: qrToken,
+        },
+      });
+
+    if (!qrCode) {
+      throw new NotFoundException(
+        'QR-Code nicht gefunden',
+      );
+    }
+
+    if (!qrCode.active) {
+      throw new NotFoundException(
+        'QR-Code ist nicht aktiv',
+      );
+    }
+
+    if (
+      qrCode.expiresAt &&
+      qrCode.expiresAt < new Date()
+    ) {
+      throw new NotFoundException(
+        'QR-Code ist abgelaufen',
+      );
+    }
+
+    const visit =
+      await this.createVisitForCustomer(
+        qrCode.customerId,
+        branchId,
+        employeeId,
+      );
+
+    return {
+      message: 'Check-in erfolgreich',
+      visit,
+    };
+  }
+
+  async getMyVisits(userId: string) {
+    const customer =
+      await this.prisma.customer.findUnique({
+        where: {
+          userId,
+        },
+      });
+
+    if (!customer) {
+      throw new NotFoundException(
+        'Kunde nicht gefunden',
+      );
+    }
+
+    return this.prisma.visit.findMany({
+      where: {
+        customerId: customer.id,
+      },
+
+      include: {
+        branch: true,
+
+        employee: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+  async scanQrCode(
+  userId: string,
+  token: string,
+) {
+  const employee =
+    await this.prisma.employee.findUnique({
+      where: {
+        userId,
+      },
+    });
+
+  if (!employee) {
+    throw new NotFoundException(
+      'Mitarbeiter nicht gefunden',
+    );
+  }
+
+  const qrCode =
+    await this.prisma.qRCode.findUnique({
+      where: {
+        token,
+      },
+        include: {
+        customer: true,
+      },
+    });
+
+  if (!qrCode) {
+    throw new NotFoundException(
+      'QR-Code nicht gefunden',
+    );
+  }
+
+  if (!qrCode.active) {
+    throw new NotFoundException(
+      'QR-Code ist nicht aktiv',
+    );
+  }
+
+  if (
+    qrCode.expiresAt &&
+    qrCode.expiresAt < new Date()
+  ) {
+    throw new NotFoundException(
+      'QR-Code ist abgelaufen',
+    );
+  }
+
+  const subscription =
+    await this.prisma.subscription.findFirst({
+      where: {
+        customerId: qrCode.customerId,
+        status: 'ACTIVE',
+        OR: [
+          {
+            expiresAt: null,
+          },
+          {
+            expiresAt: {
+              gte: new Date(),
+            },
+          },
+        ],
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+  if (!subscription) {
+    throw new NotFoundException(
+      'Keine aktive Membership vorhanden',
+    );
+  }
+
+  const visit =
+    await this.prisma.visit.create({
+      data: {
+        customerId: qrCode.customerId,
+        branchId: employee.branchId,
+        employeeId: employee.id,
+      },
+      include: {
+        branch: true,
+        employee: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+        customer: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+  return {
+    success: true,
+    message: 'Kunde erfolgreich eingecheckt',
+    visit,
+  };
+}
+}
+
+============================================================
+DATEI: C:\freshcut-system\frontend\app\admin\page.tsx
+============================================================
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type User = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+};
+
+type RevenueDay = {
+  name: string;
+  revenue: number;
+};
+
+type Dashboard = {
+  customers: number;
+  employees: number;
+  branches: number;
+  visits: number;
+
+  subscriptions: {
+    active: number;
+    expired: number;
+    cancelled?: number;
+  };
+
+  payments: {
+    paid: number;
+    pending?: number;
+    failed?: number;
+  };
+
+  revenue: number;
+
+  revenueLast7Days: RevenueDay[];
+
+  /*
+   * Diese Felder sind optional, damit die Seite auch dann
+   * funktioniert, wenn dein aktueller Backend-/dashboard-
+   * Endpoint diese zusÃ¤tzlichen Daten noch nicht liefert.
+   */
+  revenueByPackage?: {
+    name: string;
+    revenue: number;
+  }[];
+
+  revenueByBranch?: {
+    name: string;
+    revenue: number;
+  }[];
+
+  activities?: {
+    customer: string;
+    event: string;
+    amount: string;
+    status: string;
+  }[];
+
+  activeQrCodes?: number;
+};
+
+export default function AdminPage() {
+  const router = useRouter();
+
+  const [user, setUser] = useState<User | null>(null);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const API_URL =
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:3000";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAdmin() {
+      const token = localStorage.getItem("access_token");
+
+      if (!token) {
+        router.replace("/login");
+        return;
+      }
+
+      try {
+        setError(null);
+
+        /*
+         * 1. Eingeloggten Benutzer prÃ¼fen
+         */
+        const meResponse = await fetch(`${API_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        });
+
+        if (!meResponse.ok) {
+          localStorage.removeItem("access_token");
+          router.replace("/login");
+          return;
+        }
+
+        const me: User = await meResponse.json();
+
+        /*
+         * Nur SUPER_ADMIN darf in diesen Bereich.
+         */
+        if (me.role !== "SUPER_ADMIN") {
+          router.replace("/");
+          return;
+        }
+
+        if (cancelled) return;
+
+        setUser(me);
+
+        /*
+         * 2. Echtes Dashboard vom Backend laden
+         */
+        const dashboardResponse = await fetch(
+          `${API_URL}/admin/dashboard`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          },
+        );
+
+        if (!dashboardResponse.ok) {
+          throw new Error(
+            "Dashboard konnte nicht vom Backend geladen werden.",
+          );
+        }
+
+        const dashboardData: Dashboard =
+          await dashboardResponse.json();
+
+        if (cancelled) return;
+
+        setDashboard(dashboardData);
+      } catch (err) {
+        console.error("Admin Fehler:", err);
+
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Dashboard konnte nicht geladen werden.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadAdmin();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router, API_URL]);
+
+  function logout() {
+    localStorage.removeItem("access_token");
+    router.replace("/login");
+  }
+
+  function reloadDashboard() {
+    window.location.reload();
+  }
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-black text-white">
+        <div className="text-center">
+          <p className="text-sm uppercase tracking-[0.3em] text-white/40">
+            FRESHCUT WIRD GELADEN...
+          </p>
+
+          <div className="mx-auto mt-6 h-1 w-32 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-white" />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !user || !dashboard) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
+        <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
+          <div className="text-2xl font-black">
+            FRESHCUT
+          </div>
+
+          <p className="mt-6 text-xl font-bold">
+            Dashboard konnte nicht geladen werden.
+          </p>
+
+          <p className="mt-3 text-sm text-white/40">
+            {error ||
+              "Es konnten keine Dashboard-Daten geladen werden."}
+          </p>
+
+          <button
+            onClick={reloadDashboard}
+            className="mt-6 rounded-full bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-white/80"
+          >
+            ERNEUT VERSUCHEN
+          </button>
+
+          <button
+            onClick={logout}
+            className="mt-3 block w-full rounded-full border border-white/10 px-6 py-3 text-sm text-white/50 transition hover:bg-white hover:text-black"
+          >
+            ABMELDEN
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  const totalMemberships =
+    dashboard.subscriptions.active +
+    dashboard.subscriptions.expired;
+
+  const activePercentage =
+    totalMemberships > 0
+      ? Math.round(
+          (dashboard.subscriptions.active /
+            totalMemberships) *
+            100,
+        )
+      : 0;
+
+  const maxRevenue = Math.max(
+    ...dashboard.revenueLast7Days.map(
+      (day) => day.revenue,
+    ),
+    1,
+  );
+
+  /*
+   * ZusÃ¤tzliche Daten aus dem ersten Dashboard.
+   *
+   * Wenn das Backend sie bereits liefert, werden sie benutzt.
+   * Wenn dein aktueller Endpoint sie noch nicht liefert,
+   * bleiben die Bereiche sichtbar und zeigen "â€“".
+   *
+   * Dadurch wird nichts erfunden.
+   */
+  const packageData =
+    dashboard.revenueByPackage ?? [];
+
+  const branchRevenueData =
+    dashboard.revenueByBranch ?? [];
+
+  const activities =
+    dashboard.activities ?? [];
+
+  const qrCodes =
+    dashboard.activeQrCodes ?? null;
+
+  return (
+    <main className="min-h-screen bg-black text-white">
+      {/* ====================================================== */}
+      {/* HEADER                                                 */}
+      {/* ====================================================== */}
+
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-black/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+          <div>
+            <div className="text-2xl font-black">
+              FRESHCUT
+            </div>
+
+            <div className="mt-1 text-xs uppercase tracking-[0.3em] text-white/30">
+              ADMIN DASHBOARD
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="hidden rounded-full border border-white/10 px-4 py-2 text-xs text-white/40 sm:block">
+              {user.role}
+            </div>
+
+            <button
+              onClick={logout}
+              className="rounded-full border border-white/10 px-5 py-2 text-sm text-white/60 transition hover:bg-white hover:text-black"
+            >
+              ABMELDEN
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-7xl px-6 py-12">
+        {/* ====================================================== */}
+        {/* WELCOME                                                 */}
+        {/* ====================================================== */}
+
+        <section>
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-white/30">
+            ÃœBERSICHT
+          </p>
+
+          <h1 className="mt-3 text-5xl font-black md:text-7xl">
+            Hallo {user.firstName}.
+          </h1>
+
+          <p className="mt-4 text-white/40">
+            Deine FreshCut UnternehmensÃ¼bersicht.
+          </p>
+        </section>
+
+        {/* ====================================================== */}
+        {/* KPI CARDS                                               */}
+        {/* ====================================================== */}
+
+        <section className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="KUNDEN"
+            value={dashboard.customers}
+            text="Kunden insgesamt"
+          />
+
+          <StatCard
+            title="MITARBEITER"
+            value={dashboard.employees}
+            text="Aktive Mitarbeiter"
+          />
+
+          <StatCard
+            title="FILIALEN"
+            value={dashboard.branches}
+            text="Aktive Filialen"
+          />
+
+          <StatCard
+            title="BESUCHE"
+            value={dashboard.visits}
+            text="Check-ins insgesamt"
+          />
+
+          <StatCard
+            title="UMSATZ"
+            value={formatEuro(dashboard.revenue)}
+            text="Gesamt bezahlter Umsatz"
+          />
+
+          <StatCard
+            title="ZAHLUNGEN"
+            value={dashboard.payments.paid}
+            text="Erfolgreich bezahlt"
+          />
+
+          <StatCard
+            title="AKTIVE ABOS"
+            value={dashboard.subscriptions.active}
+            text="Aktive Memberships"
+          />
+
+          <StatCard
+            title="ABGELAUFEN"
+            value={dashboard.subscriptions.expired}
+            text="Abgelaufene Memberships"
+          />
+
+          <StatCard
+            title="QR-CODES"
+            value={
+              qrCodes !== null
+                ? qrCodes
+                : "â€“"
+            }
+            text="Aktive QR-Codes"
+          />
+        </section>
+
+        {/* ====================================================== */}
+        {/* UMSATZ + MEMBERSHIP                                     */}
+        {/* ====================================================== */}
+
+        <section className="mt-8 grid gap-6 lg:grid-cols-2">
+          {/* Umsatz */}
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30">
+                  UMSATZ
+                </p>
+
+                <h2 className="mt-2 text-2xl font-black">
+                  Umsatzentwicklung
+                </h2>
+
+                <p className="mt-1 text-sm text-white/30">
+                  Bezahlter Umsatz der letzten 7 Tage
+                </p>
+              </div>
+
+              <div className="rounded-full border border-white/10 px-4 py-2 text-xs text-white/40">
+                LETZTE 7 TAGE
+              </div>
+            </div>
+
+            <div className="mt-8 flex h-64 items-end gap-3">
+              {dashboard.revenueLast7Days.map(
+                (day) => {
+                  const height =
+                    day.revenue > 0
+                      ? Math.max(
+                          (day.revenue /
+                            maxRevenue) *
+                            100,
+                          8,
+                        )
+                      : 3;
+
+                  return (
+                    <div
+                      key={day.name}
+                      className="flex flex-1 flex-col items-center justify-end gap-3"
+                    >
+                      <span className="text-center text-[10px] text-white/40 sm:text-xs">
+                        {formatEuro(day.revenue)}
+                      </span>
+
+                      <div
+                        className="w-full rounded-t-xl bg-white/80 transition hover:bg-white"
+                        style={{
+                          height: `${height}%`,
+                        }}
+                      />
+
+                      <span className="text-xs text-white/30">
+                        {day.name}
+                      </span>
+                    </div>
+                  );
+                },
+              )}
+            </div>
+
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-white/30">
+                  Gesamtumsatz
+                </span>
+
+                <span className="font-black">
+                  {formatEuro(
+                    dashboard.revenue,
+                  )}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* Membership */}
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30">
+              MEMBERSHIPS
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black">
+              Membership-Status
+            </h2>
+
+            <p className="mt-1 text-sm text-white/30">
+              Aktive und abgelaufene Abonnements
+            </p>
+
+            <div className="mt-10 flex justify-center">
+              <div
+                className="relative flex h-56 w-56 items-center justify-center rounded-full"
+                style={{
+                  background: `conic-gradient(
+                    white ${activePercentage}%,
+                    rgba(255,255,255,0.10) ${activePercentage}% 100%
+                  )`,
+                }}
+              >
+                <div className="absolute inset-[28px] flex items-center justify-center rounded-full bg-black">
+                  <div className="text-center">
+                    <p className="text-5xl font-black">
+                      {activePercentage}%
+                    </p>
+
+                    <p className="mt-1 text-xs uppercase tracking-widest text-white/30">
+                      AKTIV
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 grid grid-cols-2 gap-4">
+              <MiniStat
+                title="AKTIV"
+                value={
+                  dashboard.subscriptions
+                    .active
+                }
+              />
+
+              <MiniStat
+                title="ABGELAUFEN"
+                value={
+                  dashboard.subscriptions
+                    .expired
+                }
+              />
+
+              {dashboard.subscriptions
+                .cancelled !== undefined && (
+                <MiniStat
+                  title="STORNIERT"
+                  value={
+                    dashboard
+                      .subscriptions
+                      .cancelled
+                  }
+                />
+              )}
+            </div>
+          </section>
+        </section>
+
+        {/* ====================================================== */}
+        {/* UMSATZ NACH PAKET                                       */}
+        {/* ====================================================== */}
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-8">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30">
+              PAKETE
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black">
+              Umsatz nach Paket
+            </h2>
+
+            <p className="mt-1 text-sm text-white/30">
+              Aktueller Umsatz pro Paket
+            </p>
+          </div>
+
+          {packageData.length > 0 ? (
+            <PackageRevenueChart
+              data={packageData}
+            />
+          ) : (
+            <EmptyData
+              text="Noch keine Paket-Umsatzdaten vom Backend vorhanden."
+            />
+          )}
+        </section>
+
+        {/* ====================================================== */}
+        {/* FILIALEN                                                */}
+        {/* ====================================================== */}
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-8">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30">
+                FILIALEN
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black">
+                Filial-Performance
+              </h2>
+
+              <p className="mt-1 text-sm text-white/30">
+                Ãœbersicht Ã¼ber deine Filialen
+              </p>
+            </div>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/admin/branches",
+                )
+              }
+              className="rounded-full border border-white/10 px-5 py-3 text-sm font-bold transition hover:bg-white hover:text-black"
+            >
+              FILIALEN VERWALTEN
+            </button>
+          </div>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            <BranchCard
+              name="Gesamte Filialen"
+              visits={dashboard.visits}
+              employees={dashboard.employees}
+            />
+
+            <BranchCard
+              name="Aktive Filialen"
+              visits={dashboard.visits}
+              employees={dashboard.employees}
+            />
+
+            <BranchCard
+              name="Kundenbasis"
+              visits={dashboard.visits}
+              employees={dashboard.customers}
+            />
+          </div>
+        </section>
+
+        {/* ====================================================== */}
+        {/* FILIAL UMSATZ                                           */}
+        {/* ====================================================== */}
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-8">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30">
+              FILIALUMSATZ
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black">
+              Umsatz nach Filiale
+            </h2>
+
+            <p className="mt-1 text-sm text-white/30">
+              Vergleich der FilialumsÃ¤tze
+            </p>
+          </div>
+
+          {branchRevenueData.length > 0 ? (
+            <BranchRevenueChart
+              data={branchRevenueData}
+            />
+          ) : (
+            <EmptyData
+              text="Noch keine Filial-Umsatzdaten vom Backend vorhanden."
+            />
+          )}
+        </section>
+
+        {/* ====================================================== */}
+        {/* ZAHLUNGEN                                              */}
+        {/* ====================================================== */}
+
+        <section className="mt-6 grid gap-6 sm:grid-cols-3">
+          <MiniStatLarge
+            title="ERFOLGREICH BEZAHLT"
+            value={dashboard.payments.paid}
+          />
+
+          <MiniStatLarge
+            title="AUSSTEHEND"
+            value={
+              dashboard.payments.pending ??
+              "â€“"
+            }
+          />
+
+          <MiniStatLarge
+            title="FEHLGESCHLAGEN"
+            value={
+              dashboard.payments.failed ??
+              "â€“"
+            }
+          />
+        </section>
+
+        {/* ====================================================== */}
+        {/* LETZTE AKTIVITÃ„TEN                                      */}
+        {/* ====================================================== */}
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5">
+          <div className="border-b border-white/10 px-6 py-5 md:px-8">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30">
+              AKTIVITÃ„TEN
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black">
+              Letzte AktivitÃ¤ten
+            </h2>
+
+            <p className="mt-1 text-sm text-white/30">
+              Aktuelle VorgÃ¤nge im System
+            </p>
+          </div>
+
+          {activities.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-white/5 text-white/40">
+                  <tr>
+                    <th className="px-6 py-4 font-medium md:px-8">
+                      Kunde
+                    </th>
+
+                    <th className="px-6 py-4 font-medium">
+                      Ereignis
+                    </th>
+
+                    <th className="px-6 py-4 font-medium">
+                      Betrag
+                    </th>
+
+                    <th className="px-6 py-4 font-medium">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {activities.map(
+                    (activity, index) => (
+                      <tr
+                        key={`${activity.customer}-${activity.event}-${index}`}
+                        className="border-t border-white/10"
+                      >
+                        <td className="px-6 py-4 font-medium md:px-8">
+                          {activity.customer}
+                        </td>
+
+                        <td className="px-6 py-4 text-white/50">
+                          {activity.event}
+                        </td>
+
+                        <td className="px-6 py-4">
+                          {activity.amount}
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium">
+                            {activity.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ),
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyData
+              text="Noch keine AktivitÃ¤tsdaten vom Backend vorhanden."
+            />
+          )}
+        </section>
+
+        {/* ====================================================== */}
+        {/* VERWALTUNG                                              */}
+        {/* ====================================================== */}
+
+        <section className="mt-10">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30">
+            VERWALTUNG
+          </p>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <AdminButton
+              title="KUNDEN"
+              text="Kunden verwalten"
+              onClick={() =>
+                router.push(
+                  "/admin/customers",
+                )
+              }
+            />
+
+            <AdminButton
+              title="MITARBEITER"
+              text="Mitarbeiter verwalten"
+              onClick={() =>
+                router.push(
+                  "/admin/employees",
+                )
+              }
+            />
+
+            <AdminButton
+              title="FILIALEN"
+              text="Filialen verwalten"
+              onClick={() =>
+                router.push(
+                  "/admin/branches",
+                )
+              }
+            />
+
+            <AdminButton
+              title="BESUCHE"
+              text="Check-ins ansehen"
+              onClick={() =>
+                router.push(
+                  "/admin/visits",
+                )
+              }
+            />
+
+            <AdminButton
+              title="PAKETE"
+              text="Pakete und Preise verwalten"
+              onClick={() =>
+                router.push(
+                  "/admin/packages",
+                )
+              }
+            />
+
+            <AdminButton
+              title="ABOS"
+              text="Abonnements verwalten"
+              onClick={() =>
+                router.push(
+                  "/admin/subscriptions",
+                )
+              }
+            />
+
+            <AdminButton
+              title="ZAHLUNGEN"
+              text="Zahlungen ansehen"
+              onClick={() =>
+                router.push(
+                  "/admin/payments",
+                )
+              }
+            />
+
+            <AdminButton
+              title="QR-CODES"
+              text="QR-Codes verwalten"
+              onClick={() =>
+                router.push(
+                  "/admin/qrcodes",
+                )
+              }
+            />
+          </div>
+        </section>
+
+        {/* ====================================================== */}
+        {/* ADMIN ACCOUNT                                           */}
+        {/* ====================================================== */}
+
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30">
+            ADMIN ACCOUNT
+          </p>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <Info
+              title="NAME"
+              value={`${user.firstName} ${user.lastName}`}
+            />
+
+            <Info
+              title="E-MAIL"
+              value={user.email}
+            />
+
+            <Info
+              title="ROLLE"
+              value={user.role}
+            />
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+/* ============================================================= */
+/* HELPERS                                                       */
+/* ============================================================= */
+
+function formatEuro(value: number) {
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+  }).format(value);
+}
+
+/* ============================================================= */
+/* STAT CARD                                                      */
+/* ============================================================= */
+
+function StatCard({
+  title,
+  value,
+  text,
+}: {
+  title: string;
+  value: string | number;
+  text: string;
+}) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/5 p-7 transition hover:border-white/20">
+      <p className="text-xs font-bold tracking-[0.2em] text-white/30">
+        {title}
+      </p>
+
+      <p className="mt-5 text-4xl font-black md:text-5xl">
+        {value}
+      </p>
+
+      <p className="mt-2 text-sm text-white/30">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+/* ============================================================= */
+/* MINI STAT                                                       */
+/* ============================================================= */
+
+function MiniStat({
+  title,
+  value,
+}: {
+  title: string;
+  value: number | string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <p className="text-xs text-white/30">
+        {title}
+      </p>
+
+      <p className="mt-2 text-2xl font-black">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+/* ============================================================= */
+/* LARGE MINI STAT                                                */
+/* ============================================================= */
+
+function MiniStatLarge({
+  title,
+  value,
+}: {
+  title: string;
+  value: number | string;
+}) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+      <p className="text-xs font-bold tracking-[0.2em] text-white/30">
+        {title}
+      </p>
+
+      <p className="mt-4 text-4xl font-black">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+/* ============================================================= */
+/* BRANCH CARD                                                    */
+/* ============================================================= */
+
+function BranchCard({
+  name,
+  visits,
+  employees,
+}: {
+  name: string;
+  visits: number | string;
+  employees: number | string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 p-5 transition hover:border-white/20">
+      <p className="font-bold">
+        {name}
+      </p>
+
+      <div className="mt-5 flex justify-between text-sm">
+        <span className="text-white/30">
+          Besuche
+        </span>
+
+        <span className="font-bold">
+          {visits}
+        </span>
+      </div>
+
+      <div className="mt-3 flex justify-between text-sm">
+        <span className="text-white/30">
+          Mitarbeiter
+        </span>
+
+        <span className="font-bold">
+          {employees}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================= */
+/* PACKAGE REVENUE CHART                                          */
+/* ============================================================= */
+
+function PackageRevenueChart({
+  data,
+}: {
+  data: {
+    name: string;
+    revenue: number;
+  }[];
+}) {
+  const max = Math.max(
+    ...data.map((item) => item.revenue),
+    1,
+  );
+
+  return (
+    <div className="mt-8 grid gap-4 md:grid-cols-2">
+      {data.map((item) => {
+        const percentage =
+          (item.revenue / max) * 100;
+
+        return (
+          <div
+            key={item.name}
+            className="rounded-2xl border border-white/10 bg-black/20 p-5"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <span className="font-bold">
+                {item.name}
+              </span>
+
+              <span className="text-sm text-white/50">
+                {formatEuro(item.revenue)}
+              </span>
+            </div>
+
+            <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-white"
+                style={{
+                  width: `${percentage}%`,
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ============================================================= */
+/* BRANCH REVENUE CHART                                           */
+/* ============================================================= */
+
+function BranchRevenueChart({
+  data,
+}: {
+  data: {
+    name: string;
+    revenue: number;
+  }[];
+}) {
+  const max = Math.max(
+    ...data.map((item) => item.revenue),
+    1,
+  );
+
+  return (
+    <div className="mt-8 space-y-5">
+      {data.map((item) => {
+        const percentage =
+          (item.revenue / max) * 100;
+
+        return (
+          <div key={item.name}>
+            <div className="mb-2 flex items-center justify-between gap-4">
+              <span className="font-bold">
+                {item.name}
+              </span>
+
+              <span className="text-sm text-white/50">
+                {formatEuro(item.revenue)}
+              </span>
+            </div>
+
+            <div className="h-4 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-white"
+                style={{
+                  width: `${percentage}%`,
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ============================================================= */
+/* EMPTY DATA                                                     */
+/* ============================================================= */
+
+function EmptyData({
+  text,
+}: {
+  text: string;
+}) {
+  return (
+    <div className="mt-8 rounded-2xl border border-dashed border-white/10 bg-black/20 p-10 text-center">
+      <p className="text-sm text-white/30">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+/* ============================================================= */
+/* ADMIN BUTTON                                                   */
+/* ============================================================= */
+
+function AdminButton({
+  title,
+  text,
+  onClick,
+}: {
+  title: string;
+  text: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="rounded-3xl border border-white/10 bg-white/5 p-6 text-left transition hover:bg-white hover:text-black"
+    >
+      <p className="font-black">
+        {title}
+      </p>
+
+      <p className="mt-2 text-sm text-white/40">
+        {text}
+      </p>
+    </button>
+  );
+}
+
+/* ============================================================= */
+/* INFO                                                            */
+/* ============================================================= */
+
+function Info({
+  title,
+  value,
+}: {
+  title: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+      <p className="text-xs tracking-[0.2em] text-white/30">
+        {title}
+      </p>
+
+      <p className="mt-2 break-all font-semibold">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+============================================================
+DATEI: C:\freshcut-system\frontend\app\checkout\page.tsx
+============================================================
+"use client";
+
+import { useSearchParams, useRouter } from "next/navigation";
+import { useState } from "react";
+
+export default function CheckoutPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const packageId = searchParams.get("packageId");
+  const packageName = searchParams.get("name");
+  const price = searchParams.get("price");
+  const billingInterval = searchParams.get("billingInterval");
+
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleCheckout() {
+    if (!packageId || !packageName || !price) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const response = await fetch("http://localhost:3000/payments/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          packageId,
+          packageName,
+          price: Number(price),
+          billingInterval: billingInterval || "MONTHLY",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Checkout konnte nicht erstellt werden.");
+      }
+
+      if (!data.url) {
+        throw new Error("Keine Stripe-Checkout-URL erhalten.");
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      console.error(error);
+      alert("Die Zahlung konnte nicht gestartet werden.");
+      setSubmitting(false);
+    }
+  }
+
+  if (!packageId) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-black text-white">
+        <div className="text-center">
+          <p className="text-white/50">
+            Kein Paket ausgewÃ¤hlt.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => router.push("/packages")}
+            className="mt-6 rounded-full bg-white px-8 py-3 text-sm font-bold text-black"
+          >
+            ZURÃœCK ZU DEN PAKETEN
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-black px-6 py-12 text-white">
+      <div className="mx-auto max-w-3xl">
+
+        <button
+          type="button"
+          onClick={() => router.push("/packages")}
+          className="text-sm text-white/50 transition hover:text-white"
+        >
+          â† ZurÃ¼ck zu den Paketen
+        </button>
+
+        <div className="mt-10">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/40">
+            FRESHCUT
+          </p>
+
+          <h1 className="mt-3 text-5xl font-black">
+            CHECKOUT
+          </h1>
+
+          <p className="mt-4 text-white/50">
+            ÃœberprÃ¼fe deine Auswahl vor dem Abschluss.
+          </p>
+        </div>
+
+        <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8">
+
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
+            DEIN PAKET
+          </p>
+
+          <h2 className="mt-4 text-3xl font-black">
+            {packageName || "Paket"}
+          </h2>
+
+          <div className="mt-6">
+            <span className="text-4xl font-black">
+              {price
+                ? Number(price).toFixed(2).replace(".", ",")
+                : "0,00"}{" "}
+              â‚¬
+            </span>
+
+            <span className="ml-2 text-sm text-white/40">
+              / {billingInterval === "YEARLY" ? "Jahr" : "Monat"}
+            </span>
+          </div>
+
+          <div className="mt-8">
+            <p className="mb-4 text-sm font-bold text-white/70">
+              ZAHLUNGSART
+            </p>
+
+            <div className="rounded-2xl border border-white/20 bg-white/10 p-5">
+              <p className="font-bold">
+                Karte
+              </p>
+
+              <p className="mt-1 text-sm text-white/40">
+                Kreditkarte oder Debitkarte
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleCheckout}
+            disabled={submitting}
+            className="mt-8 w-full rounded-full bg-white px-8 py-4 text-sm font-bold text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting
+              ? "WIRD GELADEN..."
+              : "ZAHLUNG EINRICHTEN"}
+          </button>
+
+        </section>
+      </div>
+    </main>
+  );
+}
+
+============================================================
+DATEI: C:\freshcut-system\frontend\app\dashboard\page.tsx
+============================================================
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
+
+type CustomerDashboardData = {
+  customer?: {
+    firstName?: string;
+    lastName?: string;
+    user?: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+    };
+  };
+
+  membership?: {
+    status?: string;
+    expiresAt?: string;
+    package?: {
+      name?: string;
+      price?: string | number;
+    };
+  };
+
+  visits?: Array<{
+    id: string;
+    checkInAt?: string;
+    createdAt?: string;
+    branch?: {
+      name?: string;
+    };
+  }>;
+};
+
+type QRCodeData = {
+  id: string;
+  customerId: string;
+  token: string;
+  active: boolean;
+  expiresAt: string | null;
+  createdAt: string;
+};
+
+export default function DashboardPage() {
+  const router = useRouter();
+
+  const [data, setData] =
+    useState<CustomerDashboardData | null>(null);
+
+  const [qrCode, setQrCode] =
+    useState<QRCodeData | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const API_URL =
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:3000";
+
+  useEffect(() => {
+    const token =
+      localStorage.getItem("access_token");
+
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    async function loadDashboard() {
+      try {
+        const headers = {
+          Authorization: `Bearer ${token}`,
+        };
+
+        const dashboardResponse =
+          await fetch(
+            `${API_URL}/customers/me/dashboard`,
+            {
+              headers,
+            },
+          );
+
+        if (!dashboardResponse.ok) {
+          const text =
+            await dashboardResponse.text();
+
+          console.error(
+            "Dashboard API Fehler:",
+            dashboardResponse.status,
+            text,
+          );
+
+          throw new Error(
+            "Dashboard konnte nicht geladen werden",
+          );
+        }
+
+        const dashboard =
+          await dashboardResponse.json();
+
+        setData(dashboard);
+
+        const qrResponse =
+          await fetch(
+            `${API_URL}/qrcodes/me`,
+            {
+              headers,
+            },
+          );
+
+        if (qrResponse.ok) {
+          const qrText =
+            await qrResponse.text();
+
+          if (qrText.trim()) {
+            try {
+              const qr =
+                JSON.parse(qrText);
+
+              setQrCode(qr);
+            } catch (error) {
+              console.error(
+                "QR-Code Antwort ist kein gÃ¼ltiges JSON:",
+                error,
+              );
+            }
+          }
+        } else {
+          const text =
+            await qrResponse.text();
+
+          console.error(
+            "QR-Code konnte nicht geladen werden:",
+            qrResponse.status,
+            text,
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Dashboard Fehler:",
+          error,
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDashboard();
+  }, [router, API_URL]);
+
+  function logout() {
+    localStorage.removeItem(
+      "access_token",
+    );
+
+    router.replace("/login");
+  }
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-black text-white">
+        <p className="text-sm uppercase tracking-widest text-white/40">
+          FRESHCUT WIRD GELADEN...
+        </p>
+      </main>
+    );
+  }
+
+  const customerName =
+    data?.customer?.user?.firstName ||
+    data?.customer?.firstName ||
+    "Kunde";
+
+  const membership =
+    data?.membership;
+
+  const visits =
+    data?.visits || [];
+
+  return (
+    <main className="min-h-screen bg-black text-white">
+
+      <header className="border-b border-white/10">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+
+          <div className="text-2xl font-black tracking-tight">
+            FRESHCUT
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() =>
+                router.push("/profile")
+              }
+              className="rounded-full border border-white/10 px-5 py-2 text-sm text-white/70 transition hover:bg-white hover:text-black"
+            >
+              MEIN PROFIL
+            </button>
+
+            <button
+              onClick={logout}
+              className="rounded-full border border-white/10 px-5 py-2 text-sm text-white/70 transition hover:bg-white hover:text-black"
+            >
+              ABMELDEN
+            </button>
+          </div>
+
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-7xl px-6 py-12">
+
+        <p className="text-sm uppercase tracking-[0.25em] text-white/40">
+          DEIN ACCOUNT
+        </p>
+
+        <h1 className="mt-3 text-4xl font-black md:text-6xl">
+          Hallo {customerName}.
+        </h1>
+
+        <p className="mt-3 text-white/50">
+          Willkommen bei FreshCut.
+        </p>
+
+        <div className="mt-12 grid gap-6 md:grid-cols-2">
+
+          {/* MEMBERSHIP */}
+
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
+              MEMBERSHIP
+            </p>
+
+            {membership ? (
+              <>
+                <h2 className="mt-5 text-3xl font-black">
+                  {membership.package?.name ||
+                    "Membership"}
+                </h2>
+
+                {membership.package?.price !==
+                  undefined && (
+                  <p className="mt-2 text-white/50">
+                    {membership.package.price} â‚¬
+                  </p>
+                )}
+
+                <div className="mt-6 inline-flex rounded-full bg-white px-4 py-2 text-xs font-bold text-black">
+                  {membership.status ||
+                    "ACTIVE"}
+                </div>
+
+                {membership.expiresAt && (
+                  <p className="mt-5 text-sm text-white/40">
+                    GÃ¼ltig bis{" "}
+                    {new Date(
+                      membership.expiresAt,
+                    ).toLocaleDateString(
+                      "de-DE",
+                    )}
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="mt-6">
+                <h2 className="text-2xl font-black">
+                  Kein aktiver Plan
+                </h2>
+
+                <p className="mt-3 max-w-md text-sm leading-6 text-white/50">
+                  Du hast aktuell kein aktives
+                  FreshCut-Paket. WÃ¤hle jetzt
+                  den passenden Plan fÃ¼r dich.
+                </p>
+
+                <button
+                  onClick={() =>
+                    router.push("/packages")
+                  }
+                  className="mt-6 rounded-full bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-white/80"
+                >
+                  PAKETE ANSEHEN
+                </button>
+              </div>
+            )}
+
+          </section>
+
+          {/* QR CODE */}
+
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
+              DEIN QR-CODE
+            </p>
+
+            {qrCode?.token ? (
+              <>
+                <div className="mt-6 inline-flex rounded-3xl bg-white p-6">
+
+                  <QRCodeSVG
+                    value={qrCode.token}
+                    size={220}
+                    level="H"
+                  />
+
+                </div>
+
+                <p className="mt-5 text-xs text-white/30">
+                  QR-Code ist{" "}
+                  {qrCode.active
+                    ? "aktiv"
+                    : "inaktiv"}
+                </p>
+              </>
+            ) : (
+              <div className="mt-6 rounded-2xl border border-white/10 p-5">
+                <p className="text-white/40">
+                  Kein QR-Code vorhanden.
+                </p>
+              </div>
+            )}
+
+          </section>
+
+        </div>
+
+        {/* BESUCHE */}
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-8">
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
+                DEINE BESUCHE
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black">
+                Besuchshistorie
+              </h2>
+            </div>
+
+            <span className="rounded-full border border-white/10 px-4 py-2 text-xs text-white/40">
+              {visits.length} BESUCHE
+            </span>
+          </div>
+
+          <div className="mt-8">
+
+            {visits.length === 0 ? (
+              <p className="text-white/40">
+                Noch keine Besuche.
+              </p>
+            ) : (
+              <div className="space-y-4">
+
+                {visits.map((visit) => {
+                  const visitDate =
+                    visit.checkInAt ||
+                    visit.createdAt;
+
+                  return (
+                    <div
+                      key={visit.id}
+                      className="flex items-center justify-between border-b border-white/10 pb-4"
+                    >
+
+                      <div>
+                        <p className="font-bold">
+                          {visit.branch?.name ||
+                            "FreshCut Filiale"}
+                        </p>
+
+                        {visitDate && (
+                          <p className="mt-1 text-sm text-white/40">
+                            {new Date(
+                              visitDate,
+                            ).toLocaleDateString(
+                              "de-DE",
+                            )}
+
+                            {" Â· "}
+
+                            {new Date(
+                              visitDate,
+                            ).toLocaleTimeString(
+                              "de-DE",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              },
+                            )}
+                          </p>
+                        )}
+                      </div>
+
+                      <span className="text-xs font-bold uppercase tracking-widest text-white/40">
+                        CHECK-IN
+                      </span>
+
+                    </div>
+                  );
+                })}
+
+              </div>
+            )}
+
+          </div>
+
+        </section>
+
+      </div>
+    </main>
+  );
+}
+
+============================================================
+DATEI: C:\freshcut-system\frontend\app\employee\page.tsx
+============================================================
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type EmployeeData = {
+  id: string;
+  userId: string;
+  branchId: string;
+
+  user?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  };
+
+  branch?: {
+    name?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+  };
+
+
+};
+
+export default function EmployeePage() {
+  const router = useRouter();
+
+  const [employee, setEmployee] =
+    useState<EmployeeData | null>(null);
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token =
+      localStorage.getItem("access_token");
+
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    fetch("http://localhost:3000/employees/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(
+            "Mitarbeiter konnte nicht geladen werden",
+          );
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setEmployee(data);
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [router]);
+
+  function logout() {
+    localStorage.removeItem("access_token");
+    router.push("/login");
+  }
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-black text-white">
+        <p className="text-sm uppercase tracking-widest text-white/40">
+          FRESHCUT WIRD GELADEN...
+        </p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-black text-white">
+      <header className="border-b border-white/10">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+          <div className="text-2xl font-black">
+            FRESHCUT
+          </div>
+
+          <button
+            onClick={logout}
+            className="rounded-full border border-white/10 px-5 py-2 text-sm text-white/60 transition hover:bg-white hover:text-black"
+          >
+            ABMELDEN
+          </button>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-6xl px-6 py-12">
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/40">
+          MITARBEITER
+        </p>
+
+        <h1 className="mt-3 text-4xl font-black md:text-6xl">
+          Hallo{" "}
+          {employee?.user?.firstName ||
+            "Mitarbeiter"}
+          .
+        </h1>
+
+        <p className="mt-3 text-white/50">
+          Willkommen im FreshCut Mitarbeiterbereich.
+        </p>
+
+        <div className="mt-10 grid gap-6 md:grid-cols-2">
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
+              DEINE FILIALE
+            </p>
+
+            <h2 className="mt-5 text-3xl font-black">
+              {employee?.branch?.name ||
+                "FreshCut Filiale"}
+            </h2>
+
+            <p className="mt-3 text-white/50">
+              {employee?.branch?.address}
+            </p>
+
+            <p className="text-white/50">
+              {employee?.branch?.postalCode}{" "}
+              {employee?.branch?.city}
+            </p>
+          </section>
+
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-8">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
+              CHECK-IN
+            </p>
+
+            <h2 className="mt-5 text-3xl font-black">
+              Kunde einchecken
+            </h2>
+
+            <p className="mt-3 text-white/50">
+              Scanne den persÃ¶nlichen QR-Code des
+              Kunden.
+            </p>
+
+            <button
+              onClick={() => router.push("/scan")}
+              className="mt-8 w-full rounded-full bg-white px-8 py-4 font-bold text-black transition hover:bg-white/80"
+            >
+              QR-CODE SCANNEN
+            </button>
+          </section>
+        </div>
+
+        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
+            ACCOUNT
+          </p>
+
+          <p className="mt-5 text-white/70">
+            {employee?.user?.firstName}{" "}
+            {employee?.user?.lastName}
+          </p>
+
+          <p className="mt-1 text-sm text-white/40">
+            {employee?.user?.email}
+          </p>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+============================================================
+DATEI: C:\freshcut-system\frontend\app\layout.tsx
+============================================================
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Create Next App",
+  description: "Generated by create next app",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">{children}</body>
+    </html>
+  );
+}
+
+
+============================================================
+DATEI: C:\freshcut-system\frontend\app\login\page.tsx
+============================================================
+"use client";
+
+import { FormEvent, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+type LoginResult = {
+  access_token: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+  };
+};
+
+export default function LoginPage() {
+  const router = useRouter();
+
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const API_URL =
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://10.25.247.145:3000";
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    const form = new FormData(
+      event.currentTarget,
+    );
+
+    const email = String(
+      form.get("email") || "",
+    ).trim();
+
+    const password = String(
+      form.get("password") || "",
+    );
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        },
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        const errorMessage = Array.isArray(
+          result.message,
+        )
+          ? result.message.join(", ")
+          : result.message;
+
+        throw new Error(
+          errorMessage ||
+            "E-Mail oder Passwort falsch",
+        );
+      }
+
+      const loginResult =
+        result as LoginResult;
+
+      localStorage.setItem(
+        "access_token",
+        loginResult.access_token,
+      );
+
+      const role =
+        loginResult.user.role;
+
+      console.log(
+        "Login erfolgreich:",
+        loginResult.user,
+      );
+
+      // SUPER ADMIN
+      if (role === "SUPER_ADMIN") {
+        router.replace("/admin");
+        return;
+      }
+
+      // BRANCH ADMIN
+      if (role === "BRANCH_ADMIN") {
+        router.replace("/admin");
+        return;
+      }
+
+      // MITARBEITER
+      if (role === "EMPLOYEE") {
+        router.replace("/employee");
+        return;
+      }
+
+      // KUNDE
+      if (role === "CUSTOMER") {
+        router.replace("/dashboard");
+        return;
+      }
+
+      // Unbekannte Rolle
+      throw new Error(
+        `Unbekannte Benutzerrolle: ${role}`,
+      );
+    } catch (error) {
+      console.error(
+        "Login-Fehler:",
+        error,
+      );
+
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Ein Fehler ist aufgetreten.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-black px-6 py-16 text-white">
+      <div className="mx-auto max-w-md">
+
+        <Link
+          href="/"
+          className="text-sm text-white/50 transition hover:text-white"
+        >
+          â† ZurÃ¼ck
+        </Link>
+
+        <h1 className="mt-10 text-5xl font-black">
+          LOGIN
+        </h1>
+
+        <p className="mt-4 text-white/50">
+          Melde dich bei deinem FreshCut-Konto an.
+        </p>
+
+        <form
+          onSubmit={handleSubmit}
+          className="mt-10 space-y-5"
+        >
+
+          <input
+            name="email"
+            type="email"
+            placeholder="E-Mail"
+            required
+            autoComplete="email"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none transition focus:border-white/40"
+          />
+
+          <input
+            name="password"
+            type="password"
+            placeholder="Passwort"
+            required
+            autoComplete="current-password"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none transition focus:border-white/40"
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-full bg-white px-8 py-4 font-bold text-black transition hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading
+              ? "WIRD GELADEN..."
+              : "EINLOGGEN"}
+          </button>
+
+        </form>
+
+        {message && (
+          <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-sm">
+            {message}
+          </div>
+        )}
+
+        <p className="mt-8 text-center text-sm text-white/50">
+          Noch kein Konto?{" "}
+
+          <Link
+            href="/register"
+            className="text-white underline"
+          >
+            Registrieren
+          </Link>
+        </p>
+
+      </div>
+    </main>
+  );
+}
+
+============================================================
+DATEI: C:\freshcut-system\frontend\app\packages\page.tsx
+============================================================
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type PackageItem = {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: string;
+  type: "SUBSCRIPTION" | "CREDIT" | "HYBRID";
+  creditsPerPeriod?: number | null;
+  visitsPerPeriod?: number | null;
+  durationDays?: number | null;
+  billingInterval: "MONTHLY" | "YEARLY";
+  active: boolean;
+};
+
+export default function PackagesPage() {
+  const router = useRouter();
+
+  const [packages, setPackages] = useState<PackageItem[]>([]);
+  const [selectedPackage, setSelectedPackage] =
+    useState<PackageItem | null>(null);
+
+const [loading, setLoading] = useState(true);
+const [message, setMessage] = useState("");
+const [submitting, setSubmitting] = useState(false);
+
+  const API_URL =
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://10.25.247.145:3000";
+
+  useEffect(() => {
+    async function loadPackages() {
+      const token =
+        localStorage.getItem("access_token");
+
+      if (!token) {
+        router.replace("/login");
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${API_URL}/packages`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            Array.isArray(result.message)
+              ? result.message.join(", ")
+              : result.message ||
+                  "Pakete konnten nicht geladen werden.",
+          );
+        }
+
+        setPackages(
+          Array.isArray(result) ? result : [],
+        );
+      } catch (error) {
+        console.error(error);
+
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Pakete konnten nicht geladen werden.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadPackages();
+  }, [API_URL, router]);
+
+  function selectPackage(item: PackageItem) {
+    setSelectedPackage(item);
+    setMessage("");
+  }
+ async function createSubscription() {
+
+if (!selectedPackage) {
+  console.log("KEIN PAKET AUSGEWÃ„HLT");
+  return;
+}
+
+  setSubmitting(true);
+  setMessage("");
+
+  try {
+    const token = localStorage.getItem("access_token");
+
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    const response = await fetch(
+      
+      `${API_URL}/subscriptions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          packageId: selectedPackage.id,
+        }),
+      },
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        Array.isArray(result.message)
+          ? result.message.join(", ")
+          : result.message ||
+              "Abo konnte nicht erstellt werden.",
+      );
+    }
+
+   setMessage("Abo erfolgreich erstellt.");
+    
+  } catch (error) {
+    console.error(error);
+
+    setMessage(
+      error instanceof Error
+        ? error.message
+        : "Abo konnte nicht erstellt werden.",
+    );
+  } finally {
+    setSubmitting(false);
+  }
+}
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-black text-white">
+        <p className="text-sm tracking-widest text-white/40">
+          PAKETE WERDEN GELADEN...
+        </p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-black px-6 py-12 text-white">
+      <div className="mx-auto max-w-6xl">
+
+
+
+        <div className="mt-10">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/40">
+            FRESHCUT
+          </p>
+
+          <h1 className="mt-3 text-5xl font-black">
+            PAKETE
+          </h1>
+
+          <p className="mt-4 max-w-xl text-white/50">
+            WÃ¤hle das FreshCut-Paket, das zu dir passt.
+          </p>
+        </div>
+
+        {message && (
+          <div className="mt-8 rounded-xl border border-white/10 bg-white/5 p-5 text-sm">
+            {message}
+          </div>
+        )}
+
+        {!message && packages.length === 0 && (
+          <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
+            <p className="text-white/50">
+              Aktuell sind keine Pakete verfÃ¼gbar.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+
+          {packages
+            .filter((item) => item.active)
+            .map((item) => {
+              const isSelected =
+                selectedPackage?.id === item.id;
+
+              return (
+                <article
+                  key={item.id}
+                  className={`rounded-3xl border p-7 transition ${
+                    isSelected
+                      ? "border-white bg-white/10"
+                      : "border-white/10 bg-white/5 hover:border-white/25"
+                  }`}
+                >
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
+                    {item.type}
+                  </p>
+
+                  <h2 className="mt-4 text-2xl font-black">
+                    {item.name}
+                  </h2>
+
+                  {item.description && (
+                    <p className="mt-3 text-sm leading-6 text-white/50">
+                      {item.description}
+                    </p>
+                  )}
+
+                  <div className="mt-8">
+                    <span className="text-4xl font-black">
+                      {Number(item.price)
+                        .toFixed(2)
+                        .replace(".", ",")}{" "}
+                      â‚¬
+                    </span>
+<span className="ml-2 text-sm text-white/40">
+  / {item.billingInterval === "MONTHLY" ? "Monat" : "Jahr"}
+</span>
+                  </div>
+
+                  {item.creditsPerPeriod !== null &&
+                    item.creditsPerPeriod !==
+                      undefined && (
+                      <div className="mt-6 border-t border-white/10 pt-5 text-sm text-white/60">
+                        Guthaben:{" "}
+                        <span className="font-bold text-white">
+                          {item.creditsPerPeriod}
+                        </span>
+                      </div>
+                    )}
+
+                  {item.visitsPerPeriod !== null &&
+                    item.visitsPerPeriod !==
+                      undefined && (
+                      <div className="mt-3 text-sm text-white/60">
+                        Besuche:{" "}
+                        <span className="font-bold text-white">
+                          {item.visitsPerPeriod}
+                        </span>
+                      </div>
+                    )}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      selectPackage(item)
+                    }
+                    className={`mt-8 w-full rounded-full px-6 py-3 text-sm font-bold transition ${
+                      isSelected
+                        ? "bg-white text-black"
+                        : "bg-white/10 text-white hover:bg-white hover:text-black"
+                    }`}
+                  >
+                    {isSelected
+                      ? "AUSGEWÃ„HLT"
+                      : "PAKET AUSWÃ„HLEN"}
+                  </button>
+                </article>
+              );
+            })}
+
+        </div>
+
+        {selectedPackage && (
+          <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-8">
+
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
+              DEINE AUSWAHL
+            </p>
+
+            <h2 className="mt-4 text-3xl font-black">
+              {selectedPackage.name}
+            </h2>
+
+            <p className="mt-2 text-white/50">
+              {Number(selectedPackage.price)
+                .toFixed(2)
+                .replace(".", ",")}{" "}
+              â‚¬
+            </p>
+
+   <p className="mt-2 text-sm text-white/50">
+  Abrechnung:{" "}
+  {selectedPackage.billingInterval === "MONTHLY"
+    ? "monatlich"
+    : "jÃ¤hrlich"}
+</p>
+
+{message === "Abo erfolgreich erstellt." && (
+  <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white">
+    Abo erfolgreich erstellt.
+  </div>
+)}
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
+              <p className="text-sm text-white/60">
+                Du hast dieses Paket ausgewÃ¤hlt.
+              </p>
+
+              <p className="mt-2 text-sm text-white/40">
+                Der Abschluss und die Zahlung werden
+                im nÃ¤chsten Schritt eingerichtet.
+              </p>
+            </div>
+
+<button
+  type="button"
+  onClick={() => {
+    if (!selectedPackage) return;
+
+    const params = new URLSearchParams({
+      packageId: selectedPackage.id,
+      name: selectedPackage.name,
+      price: selectedPackage.price,
+      billingInterval: selectedPackage.billingInterval,
+    });
+
+    window.location.href = `/checkout?${params.toString()}`;
+  }}
+  className="mt-6 rounded-full bg-white px-8 py-4 text-sm font-bold text-black transition hover:bg-white/90"
+>
+  WEITER ZUM ABSCHLUSS
+</button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setSelectedPackage(null)
+              }
+              className="ml-3 rounded-full border border-white/10 px-8 py-4 text-sm font-bold text-white/60 transition hover:bg-white hover:text-black"
+            >
+              AUSWAHL AUFHEBEN
+            </button>
+
+          </section>
+        )}
+
+      </div>
+    </main>
+  );
+}
+
+============================================================
+DATEI: C:\freshcut-system\frontend\app\page.tsx
+============================================================
+"use client";
+
+import { FormEvent, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+export default function RegisterPage() {
+  const router = useRouter();
+
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const form = new FormData(event.currentTarget);
+
+    const password = String(form.get("password") || "");
+
+    if (password.length < 8) {
+      setMessage("Das Passwort muss mindestens 8 Zeichen haben.");
+      return;
+    }
+
+    const data = {
+      firstName: String(form.get("firstName") || ""),
+      lastName: String(form.get("lastName") || ""),
+      email: String(form.get("email") || ""),
+      phone: String(form.get("phone") || ""),
+      password,
+    };
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+     const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:3000";
+
+const response = await fetch(
+  `${API_URL}/auth/register`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  },
+);
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        const errorMessage = Array.isArray(result.message)
+          ? result.message.join(", ")
+          : result.message;
+
+        throw new Error(
+          errorMessage || "Registrierung fehlgeschlagen",
+        );
+      }
+
+      setMessage(
+        "Registrierung erfolgreich! Du wirst zum Login weitergeleitet...",
+      );
+
+      setTimeout(() => {
+        router.push("/login");
+      }, 1200);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Ein Fehler ist aufgetreten.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-black px-6 py-16 text-white">
+      <div className="mx-auto max-w-md">
+
+        <Link
+          href="/"
+          className="text-sm text-white/50 transition hover:text-white"
+        >
+          â† ZurÃ¼ck
+        </Link>
+
+        <h1 className="mt-10 text-5xl font-black">
+          REGISTRIEREN
+        </h1>
+
+        <p className="mt-4 text-white/50">
+          Erstelle dein kostenloses FreshCut-Konto.
+        </p>
+
+        <form
+          onSubmit={handleSubmit}
+          className="mt-10 space-y-5"
+        >
+          <input
+            name="firstName"
+            placeholder="Vorname"
+            required
+            autoComplete="given-name"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none transition focus:border-white/40"
+          />
+
+          <input
+            name="lastName"
+            placeholder="Nachname"
+            required
+            autoComplete="family-name"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none transition focus:border-white/40"
+          />
+
+          <input
+            name="email"
+            type="email"
+            placeholder="E-Mail"
+            required
+            autoComplete="email"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none transition focus:border-white/40"
+          />
+
+          <input
+            name="phone"
+            type="tel"
+            placeholder="Telefon"
+            required
+            autoComplete="tel"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none transition focus:border-white/40"
+          />
+
+          <input
+            name="password"
+            type="password"
+            placeholder="Passwort"
+            required
+            minLength={8}
+            autoComplete="new-password"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none transition focus:border-white/40"
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-full bg-white px-8 py-4 font-bold text-black transition hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading
+              ? "WIRD ERSTELLT..."
+              : "KONTO ERSTELLEN"}
+          </button>
+        </form>
+
+        {message && (
+          <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-sm">
+            {message}
+          </div>
+        )}
+
+        <p className="mt-8 text-center text-sm text-white/50">
+          Bereits registriert?{" "}
+          <Link
+            href="/login"
+            className="text-white underline"
+          >
+            Einloggen
+          </Link>
+        </p>
+
+      </div>
+    </main>
+  );
+}
+
+============================================================
+DATEI: C:\freshcut-system\frontend\app\profile\page.tsx
+============================================================
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type Profile = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
+  profileImage?: string | null;
+  role: string;
+  customer?: {
+    id: string;
+    dateOfBirth?: string | null;
+  } | null;
+};
+
+export default function ProfilePage() {
+  const router = useRouter();
+
+  const [profile, setProfile] =
+    useState<Profile | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const API_URL =
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://10.25.247.145:3000";
+
+  useEffect(() => {
+    async function loadProfile() {
+      const token =
+        localStorage.getItem("access_token");
+
+      if (!token) {
+        router.replace("/login");
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${API_URL}/customers/me`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "Profil konnte nicht geladen werden.",
+          );
+        }
+
+        const data = await response.json();
+
+        setProfile(data);
+      } catch (error) {
+        console.error(error);
+
+        setMessage(
+          "Profil konnte nicht geladen werden.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProfile();
+  }, [API_URL, router]);
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (!profile) return;
+
+    const token =
+      localStorage.getItem("access_token");
+
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    const form = new FormData(
+      event.currentTarget,
+    );
+
+    setSaving(true);
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/customers/me`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            firstName: String(
+              form.get("firstName") || "",
+            ),
+            lastName: String(
+              form.get("lastName") || "",
+            ),
+            phone: String(
+              form.get("phone") || "",
+            ),
+            dateOfBirth:
+              String(
+                form.get("dateOfBirth") || "",
+              ) || undefined,
+            profileImage:
+              String(
+                form.get("profileImage") || "",
+              ) || undefined,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Profil konnte nicht gespeichert werden.",
+        );
+      }
+
+      setProfile(data);
+      setMessage("Profil erfolgreich gespeichert.");
+    } catch (error) {
+      console.error(error);
+
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Fehler beim Speichern.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-black text-white">
+        <p className="text-sm tracking-widest text-white/40">
+          PROFIL WIRD GELADEN...
+        </p>
+      </main>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-black text-white">
+        <p className="text-white/50">
+          Profil nicht verfÃ¼gbar.
+        </p>
+      </main>
+    );
+  }
+
+  const dateOfBirth =
+    profile.customer?.dateOfBirth
+      ? new Date(
+          profile.customer.dateOfBirth,
+        )
+            .toISOString()
+            .split("T")[0]
+      : "";
+
+  return (
+    <main className="min-h-screen bg-black px-6 py-12 text-white">
+      <div className="mx-auto max-w-2xl">
+
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="text-sm text-white/50 transition hover:text-white"
+        >
+          â† ZurÃ¼ck zum Dashboard
+        </button>
+
+        <div className="mt-10">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/40">
+            DEIN PROFIL
+          </p>
+
+          <h1 className="mt-3 text-5xl font-black">
+            {profile.firstName}
+          </h1>
+
+          <p className="mt-3 text-white/50">
+            Verwalte hier deine persÃ¶nlichen Daten.
+          </p>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="mt-10 space-y-6"
+        >
+
+          <div className="flex justify-center">
+            <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/5">
+
+              {profile.profileImage ? (
+                <img
+                  src={profile.profileImage}
+                  alt="Profilbild"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-4xl font-black text-white/30">
+                  {profile.firstName?.[0]}
+                  {profile.lastName?.[0]}
+                </span>
+              )}
+
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm text-white/50">
+              Profilbild URL
+            </label>
+
+            <input
+              name="profileImage"
+              defaultValue={
+                profile.profileImage || ""
+              }
+              placeholder="https://..."
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none focus:border-white/40"
+            />
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+
+            <div>
+              <label className="mb-2 block text-sm text-white/50">
+                Vorname
+              </label>
+
+              <input
+                name="firstName"
+                defaultValue={
+                  profile.firstName
+                }
+                required
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none focus:border-white/40"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm text-white/50">
+                Nachname
+              </label>
+
+              <input
+                name="lastName"
+                defaultValue={
+                  profile.lastName
+                }
+                required
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none focus:border-white/40"
+              />
+            </div>
+
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm text-white/50">
+              E-Mail
+            </label>
+
+            <input
+              value={profile.email}
+              disabled
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-white/40"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm text-white/50">
+              Telefonnummer
+            </label>
+
+            <input
+              name="phone"
+              type="tel"
+              defaultValue={
+                profile.phone || ""
+              }
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none focus:border-white/40"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm text-white/50">
+              Geburtsdatum
+            </label>
+
+            <input
+              name="dateOfBirth"
+              type="date"
+              defaultValue={dateOfBirth}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none focus:border-white/40"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full rounded-full bg-white px-8 py-4 font-bold text-black transition hover:bg-white/80 disabled:opacity-50"
+          >
+            {saving
+              ? "WIRD GESPEICHERT..."
+              : "PROFIL SPEICHERN"}
+          </button>
+
+        </form>
+
+        {message && (
+          <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-sm">
+            {message}
+          </div>
+        )}
+
+      </div>
+    </main>
+  );
+}
+
+============================================================
+DATEI: C:\freshcut-system\frontend\app\register\page.tsx
+============================================================
+"use client";
+
+import { FormEvent, useState } from "react";
+import Link from "next/link";
+
+export default function RegisterPage() {
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const form = new FormData(event.currentTarget);
+
+    const data = {
+      firstName: form.get("firstName"),
+      lastName: form.get("lastName"),
+      email: form.get("email"),
+      phone: form.get("phone"),
+      password: form.get("password"),
+    };
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        "http://localhost:3000/auth/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        },
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message || "Registrierung fehlgeschlagen",
+        );
+      }
+
+      setMessage(
+        "Registrierung erfolgreich! Du kannst dich jetzt einloggen.",
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Ein Fehler ist aufgetreten.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-black px-6 py-16 text-white">
+      <div className="mx-auto max-w-md">
+        <Link
+          href="/"
+          className="text-sm text-white/50 hover:text-white"
+        >
+          â† ZurÃ¼ck
+        </Link>
+
+        <h1 className="mt-10 text-5xl font-black">
+          REGISTRIEREN
+        </h1>
+
+        <p className="mt-4 text-white/50">
+          Erstelle dein kostenloses FreshCut-Konto.
+        </p>
+
+        <form
+          onSubmit={handleSubmit}
+          className="mt-10 space-y-5"
+        >
+          <input
+            name="firstName"
+            placeholder="Vorname"
+            required
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none focus:border-white/40"
+          />
+
+          <input
+            name="lastName"
+            placeholder="Nachname"
+            required
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none focus:border-white/40"
+          />
+
+          <input
+            name="email"
+            type="email"
+            placeholder="E-Mail"
+            required
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none focus:border-white/40"
+          />
+
+          <input
+            name="phone"
+            placeholder="Telefon"
+            required
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none focus:border-white/40"
+          />
+
+          <input
+            name="password"
+            type="password"
+            placeholder="Passwort"
+            required
+            minLength={8}
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 outline-none focus:border-white/40"
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-full bg-white px-8 py-4 font-bold text-black hover:bg-white/80 disabled:opacity-50"
+          >
+            {loading
+              ? "WIRD ERSTELLT..."
+              : "KONTO ERSTELLEN"}
+          </button>
+        </form>
+
+        {message && (
+          <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-sm">
+            {message}
+          </div>
+        )}
+
+        <p className="mt-8 text-center text-sm text-white/50">
+          Bereits registriert?{" "}
+          <Link
+            href="/login"
+            className="text-white underline"
+          >
+            Einloggen
+          </Link>
+        </p>
+      </div>
+    </main>
+  );
+}
+
+============================================================
+DATEI: C:\freshcut-system\frontend\app\scan\page.tsx
+============================================================
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type ScanResult = {
+  success?: boolean;
+  message?: string;
+  visit?: {
+    id?: string;
+    checkInAt?: string;
+
+    branch?: {
+      name?: string;
+    };
+
+    customer?: {
+      user?: {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+      };
+    };
+
+    employee?: {
+      user?: {
+        firstName?: string;
+        lastName?: string;
+      };
+    };
+  };
+};
+
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:3000";
+
+export default function ScanPage() {
+  const router = useRouter();
+
+  const scannerRef = useRef<any>(null);
+  const processingRef = useRef(false);
+
+  const [message, setMessage] = useState("");
+  const [scanning, setScanning] = useState(true);
+  const [result, setResult] =
+    useState<ScanResult | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function startScanner() {
+      const token =
+        localStorage.getItem("access_token");
+
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      const { Html5Qrcode } =
+        await import("html5-qrcode");
+
+      if (!mounted) return;
+
+      const scanner =
+        new Html5Qrcode("qr-reader");
+
+      scannerRef.current = scanner;
+
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: {
+              width: 250,
+              height: 250,
+            },
+          },
+
+          async (decodedText: string) => {
+            if (
+              !mounted ||
+              processingRef.current
+            ) {
+              return;
+            }
+
+            processingRef.current = true;
+
+            setScanning(false);
+            setMessage(
+              "QR-Code erkannt. PrÃ¼fe Kunde...",
+            );
+            setResult(null);
+
+            try {
+              await scanner.stop();
+            } catch {
+              // Scanner war eventuell bereits gestoppt
+            }
+
+            try {
+              const response =
+                await fetch(
+                  `${API_URL}/visits/scan`,
+                  {
+                    method: "POST",
+
+                    headers: {
+                      "Content-Type":
+                        "application/json",
+                      Authorization:
+                        `Bearer ${token}`,
+                    },
+
+                    body: JSON.stringify({
+                      token: decodedText,
+                    }),
+                  },
+                );
+
+              const data =
+                (await response.json()) as ScanResult;
+
+              if (!response.ok) {
+                const errorMessage =
+                  Array.isArray(data.message)
+                    ? data.message.join(", ")
+                    : data.message ||
+                      "Check-in fehlgeschlagen";
+
+                throw new Error(
+                  errorMessage,
+                );
+              }
+
+              setResult(data);
+
+              setMessage(
+                data.message ||
+                  "Kunde erfolgreich eingecheckt.",
+              );
+            } catch (error) {
+              console.error(
+                "QR-Scan Fehler:",
+                error,
+              );
+
+              setMessage(
+                error instanceof Error
+                  ? error.message
+                  : "Check-in fehlgeschlagen",
+              );
+
+              setScanning(true);
+              processingRef.current = false;
+
+              // Scanner nach Fehler erneut starten
+              try {
+                await scanner.start(
+                  {
+                    facingMode:
+                      "environment",
+                  },
+                  {
+                    fps: 10,
+                    qrbox: {
+                      width: 250,
+                      height: 250,
+                    },
+                  },
+                  async (
+                    text: string,
+                  ) => {
+                    if (
+                      processingRef.current
+                    ) {
+                      return;
+                    }
+
+                    processingRef.current =
+                      true;
+
+                    setScanning(false);
+
+                    try {
+                      const retryResponse =
+                        await fetch(
+                          `${API_URL}/visits/scan`,
+                          {
+                            method: "POST",
+
+                            headers: {
+                              "Content-Type":
+                                "application/json",
+                              Authorization:
+                                `Bearer ${token}`,
+                            },
+
+                            body: JSON.stringify({
+                              token: text,
+                            }),
+                          },
+                        );
+
+                      const retryData =
+                        (await retryResponse.json()) as ScanResult;
+
+                      if (
+                        !retryResponse.ok
+                      ) {
+                        throw new Error(
+                          Array.isArray(
+                            retryData.message,
+                          )
+                            ? retryData.message.join(
+                                ", ",
+                              )
+                            : retryData.message ||
+                                "Check-in fehlgeschlagen",
+                        );
+                      }
+
+                      setResult(
+                        retryData,
+                      );
+
+                      setMessage(
+                        retryData.message ||
+                          "Kunde erfolgreich eingecheckt.",
+                      );
+                    } catch (retryError) {
+                      console.error(
+                        retryError,
+                      );
+
+                      setMessage(
+                        retryError instanceof
+                          Error
+                          ? retryError.message
+                          : "Check-in fehlgeschlagen",
+                      );
+
+                      setScanning(true);
+                      processingRef.current =
+                        false;
+                    }
+                  },
+                  () => {},
+                );
+              } catch (restartError) {
+                console.error(
+                  "Scanner konnte nicht neu gestartet werden:",
+                  restartError,
+                );
+              }
+            }
+          },
+
+          () => {
+            // QR-Code noch nicht erkannt
+          },
+        );
+      } catch (error) {
+        console.error(
+          "Kamera Fehler:",
+          error,
+        );
+
+        if (mounted) {
+          setMessage(
+            "Kamera konnte nicht gestartet werden. Bitte erlaube den Kamera-Zugriff.",
+          );
+
+          setScanning(false);
+        }
+      }
+    }
+
+    startScanner();
+
+    return () => {
+      mounted = false;
+
+      if (scannerRef.current) {
+        scannerRef.current
+          .stop()
+          .catch(() => {});
+      }
+    };
+  }, [router]);
+
+  const customer =
+    result?.visit?.customer?.user;
+
+  const branch =
+    result?.visit?.branch;
+
+  return (
+    <main className="min-h-screen bg-black text-white">
+      <header className="border-b border-white/10">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
+          <button
+            onClick={() =>
+              router.push("/employee")
+            }
+            className="text-sm text-white/50 transition hover:text-white"
+          >
+            â† ZurÃ¼ck
+          </button>
+
+          <div className="text-xl font-black tracking-tight">
+            FRESHCUT
+          </div>
+
+          <div className="w-12" />
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-3xl px-6 py-10">
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/40">
+          CHECK-IN
+        </p>
+
+        <h1 className="mt-3 text-4xl font-black md:text-5xl">
+          QR-CODE SCANNEN
+        </h1>
+
+        <p className="mt-3 text-white/50">
+          Richte die Kamera auf den QR-Code
+          des Kunden.
+        </p>
+
+        <div
+          className={`mt-8 overflow-hidden rounded-3xl border p-4 ${
+            result
+              ? "border-white/20 bg-white/10"
+              : "border-white/10 bg-white/5"
+          }`}
+        >
+          <div id="qr-reader" />
+        </div>
+
+        {message && (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6">
+            <p className="text-sm font-bold">
+              {message}
+            </p>
+
+            {result?.visit && (
+              <div className="mt-6 space-y-5">
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-white/30">
+                    KUNDE
+                  </p>
+
+                  <p className="mt-1 text-2xl font-black">
+                    {customer?.firstName}{" "}
+                    {customer?.lastName}
+                  </p>
+
+                  {customer?.email && (
+                    <p className="mt-1 text-sm text-white/40">
+                      {customer.email}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-white/30">
+                    FILIALE
+                  </p>
+
+                  <p className="mt-1 font-bold">
+                    {branch?.name ||
+                      "FreshCut Filiale"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-white/30">
+                    STATUS
+                  </p>
+
+                  <p className="mt-1 font-bold">
+                    CHECK-IN ERFOLGREICH
+                  </p>
+                </div>
+
+                {result.visit
+                  .checkInAt && (
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-white/30">
+                      ZEIT
+                    </p>
+
+                    <p className="mt-1 font-bold">
+                      {new Date(
+                        result.visit.checkInAt,
+                      ).toLocaleString(
+                        "de-DE",
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    setResult(null);
+                    setMessage("");
+                    processingRef.current =
+                      false;
+                    setScanning(true);
+
+                    window.location.reload();
+                  }}
+                  className="mt-4 w-full rounded-full bg-white px-8 py-4 font-bold text-black transition hover:bg-white/80"
+                >
+                  NÃ„CHSTEN KUNDEN SCANNEN
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {scanning && (
+          <p className="mt-5 text-center text-xs uppercase tracking-widest text-white/30">
+            Kamera aktiv â€“ QR-Code suchen...
+          </p>
+        )}
+
+        <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5">
+          <p className="text-xs uppercase tracking-widest text-white/30">
+            API
+          </p>
+
+          <p className="mt-2 break-all text-sm text-white/50">
+            {API_URL}
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}
+
