@@ -16,6 +16,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check OpenAI API key
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "ERROR: OPENAI_API_KEY secret is missing."
+            echo "Go to Settings -> Secrets and variables -> Actions"
+            echo "and create a repository secret named OPENAI_API_KEY."
+            exit 1
+          fi
+
+          echo "OpenAI API key is available."
+
       - name: Run OpenAI inference
         id: inference
         env:
@@ -30,6 +43,7 @@ jobs:
           import urllib.error
 
           api_key = os.environ["OPENAI_API_KEY"]
+
           title = os.environ.get("ISSUE_TITLE", "")
           body = os.environ.get("ISSUE_BODY", "")
 
@@ -81,17 +95,20 @@ jobs:
                   os.environ["GITHUB_OUTPUT"],
                   "a",
                   encoding="utf-8"
-              ) as f:
-                  f.write("response<<EOF\n")
-                  f.write(text)
-                  f.write("\nEOF\n")
+              ) as output:
+                  output.write("response<<EOF\n")
+                  output.write(text)
+                  output.write("\nEOF\n")
 
-          except urllib.error.HTTPError as e:
-              error_body = e.read().decode(
+              print("OpenAI inference completed successfully.")
+
+          except urllib.error.HTTPError as error:
+              error_body = error.read().decode(
                   "utf-8",
                   errors="replace"
               )
-              print(f"OpenAI API error: HTTP {e.code}")
+
+              print(f"OpenAI API error: HTTP {error.code}")
               print(error_body)
               raise
 
